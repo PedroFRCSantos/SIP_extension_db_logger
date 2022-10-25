@@ -1,0 +1,71 @@
+$def with(commands)
+
+$var title: $_(u'SIP DB Logger') 
+$var page: db_logger
+
+<script>
+    jQuery(document).ready(function(){
+
+        jQuery("#cSubmit").click(function() {     	
+        	jQuery("#clic").submit();
+        });
+        jQuery("button#cCancel").click(function(){
+            window.location= "/";
+        });
+    });
+</script>
+
+<style>
+.columnName {
+    text-align: center;
+}
+</style>
+
+<div id="plugin">
+    <!--     <div class="title">Command Line Control -->
+    <!--     <button class="execute" id="docButton" type="button" >$_('Help')</button> -->
+    <!--     </div> -->
+    <div>
+        <p>This plugin can be used to save logs in DB, usefull to stattistics.</p>
+    </div>
+    <div>
+        <br />
+
+        <form id="clic" name="clic" action="/dblogupdate" method="get">
+            <select name="dbType" id="dbType">
+                <option value="none">None</option>
+                <option value="sqlLite">SQ Lite</option>
+                <option value="mySQL">MySQL</option>
+            </select>
+            <br /><br />
+            User name: <input type="text" id="uname" name="uname">
+            <br />
+            User pass: <input type="text" id="pwd" name="pwd">
+            <br />
+            Server IP/Path: <input type="text" id="ippath" name="ippath">
+            <br />
+            DB Name: <input type="text" id="dbname" name="dbname">
+            <br /><br />
+
+            <p>Elements to save logs</p>
+
+            <br />
+
+            <input type="checkbox" id="valRaw" name="valRaw" value="valRaw"> Save valves raw
+            <input type="checkbox" id="progState" name="progState" value="progState"> Program state
+            <input type="checkbox" id="sipStart" name="sipStart" value="sipStart"> Program start
+            <input type="checkbox" id="progStop" name="progStop" value="progStop"> Program Stop
+            <input type="checkbox" id="sipRest" name="sipRest" value="sipRest"> Program restart
+            <input type="checkbox" id="progChange" name="progChange" value="progChange"> Program Change
+            <input type="checkbox" id="generalDef" name="generalDef" value="generalDef"> General Definition
+            <input type="checkbox" id="userLogIn" name="userLogIn" value="userLogIn"> User Login
+        </form>
+    </div>
+
+    <br /><br />
+
+    <div class="controls">
+        <button id="cSubmit" class="submit"><b>$_(u'Submit')</b></button>
+        <button id="cCancel" class="cancel danger">$_(u'Cancel')</button>
+    </div>
+</div>

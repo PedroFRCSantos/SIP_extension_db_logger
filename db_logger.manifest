@@ -1,0 +1,14 @@
+Description: Allows the SIP program to save log to DB, usefull to statistics
+Copyright 2022
+Author: Pedro Santos
+Email:
+License: GNU GPL 3.0
+
+Requirements:
+
+##### List all plugin files below preceded by a blank line [file_name.ext path] relative to SIP directory #####
+
+db_logger.py plugins
+db_logger.html templates
+db_logger.json data (generated)
+db_logger.manifest plugins/manifests
