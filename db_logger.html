@@ -1,4 +1,4 @@
-$def with(commands)
+$def with(dbDefinitions)
 
 $var title: $_(u'SIP DB Logger') 
 $var page: db_logger
@@ -34,31 +34,39 @@ $var page: db_logger
         <form id="clic" name="clic" action="/dblogupdate" method="get">
             <select name="dbType" id="dbType">
                 <option value="none">None</option>
-                <option value="sqlLite">SQ Lite</option>
-                <option value="mySQL">MySQL</option>
+
+                $if dbDefinitions[u"serverType"] == 'sqlLite':
+                    <option value="sqlLite" selected="selected">SQ Lite</option>
+                $else:
+                    <option value="sqlLite">SQ Lite</option>
+
+                $if dbDefinitions[u"serverType"] == 'mySQL':
+                    <option value="mySQL" selected="selected">MySQL</option>
+                $else:
+                    <option value="mySQL">MySQL</option>
             </select>
             <br /><br />
-            User name: <input type="text" id="uname" name="uname">
+            User name: <input type="text" id="uname" name="uname" value="${dbDefinitions[u'userName']}">
             <br />
             User pass: <input type="text" id="pwd" name="pwd">
             <br />
-            Server IP/Path: <input type="text" id="ippath" name="ippath">
+            Server IP/FileName: <input type="text" id="ippath" name="ippath" value="${dbDefinitions[u'ipPathDB']}">
             <br />
-            DB Name: <input type="text" id="dbname" name="dbname">
+            DB Name: <input type="text" id="dbname" name="dbname" value="${dbDefinitions[u'dbName']}">
             <br /><br />
 
             <p>Elements to save logs</p>
 
             <br />
 
-            <input type="checkbox" id="valRaw" name="valRaw" value="valRaw"> Save valves raw
-            <input type="checkbox" id="progState" name="progState" value="progState"> Program state
-            <input type="checkbox" id="sipStart" name="sipStart" value="sipStart"> Program start
-            <input type="checkbox" id="progStop" name="progStop" value="progStop"> Program Stop
-            <input type="checkbox" id="sipRest" name="sipRest" value="sipRest"> Program restart
-            <input type="checkbox" id="progChange" name="progChange" value="progChange"> Program Change
-            <input type="checkbox" id="generalDef" name="generalDef" value="generalDef"> General Definition
-            <input type="checkbox" id="userLogIn" name="userLogIn" value="userLogIn"> User Login
+            <input type="checkbox" id="valRaw" name="valRaw" value="valRaw" ${"checked" if dbDefinitions['saveValveRaw'] == 1 else "" }> Save valves raw
+            <input type="checkbox" id="progState" name="progState" value="progState" ${"checked" if dbDefinitions['saveProgState'] == 1 else "" }> Program state
+            <input type="checkbox" id="sipStart" name="sipStart" value="sipStart" ${"checked" if dbDefinitions['saveSIPStart'] == 1 else "" }> Program start
+            <input type="checkbox" id="progStop" name="progStop" value="progStop" ${"checked" if dbDefinitions['saveSIPStop'] == 1 else "" }> Program Stop
+            <input type="checkbox" id="sipRest" name="sipRest" value="sipRest" ${"checked" if dbDefinitions['saveSIPRest'] == 1 else "" }> Program restart
+            <input type="checkbox" id="progChange" name="progChange" value="progChange" ${"checked" if dbDefinitions['saveProgChange'] == 1 else "" }> Program Change
+            <input type="checkbox" id="generalDef" name="generalDef" value="generalDef" ${"checked" if dbDefinitions['saveGeneralDefinitions'] == 1 else "" }> General Definition
+            <input type="checkbox" id="userLogIn" name="userLogIn" value="userLogIn" ${"checked" if dbDefinitions['saveUserLogIn'] == 1 else "" }> User Login
         </form>
     </div>
 
