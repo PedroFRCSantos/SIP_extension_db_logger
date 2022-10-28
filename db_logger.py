@@ -10,6 +10,7 @@ import time
 
 # Library to use DB
 import sqlite3
+import mysql.connector
 from threading import Thread, Lock
 
 # local module imports
@@ -49,12 +50,21 @@ def load_connect_2_DB(ipPathDB, userName, passWord, dbName):
         dbIsOpen = True
     else:
         # Mysql
-        pass
+        conDB = mysql.connector.connect(host = ipPathDB, user = userName, password = passWord)
+        dbIsOpen = True
 
     if not dbIsOpen:
         return dbIsOpen, conDB, None
     else:
-        curDBLog = conDB.cursor()
+        if dbDefinitions[u"serverType"] == 'sqlLite':
+            curDBLog = conDB.cursor()
+        else:
+            curDBLog = conDB.cursor(buffered=True)
+
+        if dbDefinitions[u"serverType"] == 'mySQL':
+            curDBLog.execute("CREATE DATABASE IF NOT EXISTS " + dbDefinitions[u"dbName"])
+            curDBLog.execute("USE " + dbDefinitions[u"dbName"])
+
         return dbIsOpen, conDB, curDBLog
 
 def load_commands():
@@ -71,7 +81,7 @@ def load_commands():
     mutexDB.acquire()
 
     if dbDefinitions[u"serverType"] != 'none':
-        dbIsOpen, conDB, curDBLog = load_connect_2_DB("./data/" + dbDefinitions[u"ipPathDB"] + ".db", dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"])
+        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"])
 
         if not dbIsOpen:
             mutexDB.release()
@@ -81,7 +91,7 @@ def load_commands():
             curDBLog.execute("CREATE TABLE IF NOT EXISTS valves_id (ValveId integer primary key, ValveIdName TEXT NOT NULL)")
         else:
             # Mysql DB
-            pass
+            curDBLog.execute("CREATE TABLE IF NOT EXISTS valves_id (ValveId int NOT NULL AUTO_INCREMENT, ValveIdName TEXT NOT NULL, PRIMARY KEY (ValveId))")
 
         # if not exists create table with raw turn and turn off
         if dbDefinitions[u"saveValveRaw"] == 1:
@@ -89,26 +99,22 @@ def load_commands():
                 curDBLog.execute("CREATE TABLE IF NOT EXISTS valves_raw (ValveRawId integer primary key, ValveRawFK integer NOT NULL, ValveRawON datetime default current_timestamp, ValveRawOFF datetime default current_timestamp, FOREIGN KEY(ValveRawFK) REFERENCES valves_id(ValveId))")
             else:
                 # Mysql DB
-                pass
+                curDBLog.execute("CREATE TABLE IF NOT EXISTS valves_raw (ValveRawId int NOT NULL AUTO_INCREMENT, ValveRawFK integer NOT NULL, ValveRawON datetime NOT NULL DEFAULT NOW(), ValveRawOFF datetime NOT NULL DEFAULT NOW(), PRIMARY KEY (ValveRawId), FOREIGN KEY(ValveRawFK) REFERENCES valves_id(ValveId))")
 
-        #for i in range(len(gv.srvals)):
+        # Add missin valves id
         res = curDBLog.execute("SELECT COUNT(ValveId) as totalNumber FROM valves_id")
-        totalNumber = res.fetchone()[0]
+        if res is not None:
+            totalNumber = res.fetchone()[0]
+        else:
+            totalNumber = 0
         if len(gv.srvals) > totalNumber:
             for i in range(len(gv.srvals) - totalNumber):
-                if dbDefinitions[u"serverType"] == 'sqlLite':
-                    curDBLog.execute("INSERT INTO valves_id (ValveIdName) VALUES ('"+ gv.snames[totalNumber + i] +"')")
-                else:
-                    # Mysql DB
-                    pass
+                curDBLog.execute("INSERT INTO valves_id (ValveIdName) VALUES ('"+ gv.snames[totalNumber + i] +"')")
         
         # Update valve Name
         for i in range(totalNumber):
             if dbDefinitions[u"serverType"] == 'sqlLite':
                 curDBLog.execute("UPDATE valves_id SET ValveIdName = '"+ gv.snames[i] +"' WHERE ValveId = "+ str(i + 1))
-            else:
-                # Mysql DB
-                pass
 
         # if not exist create table to save turn on SIP
         if dbDefinitions[u"saveSIPStart"] == 1:
@@ -117,7 +123,8 @@ def load_commands():
                 curDBLog.execute("INSERT INTO sip_start (SIPStartTime) VALUES (datetime('now','localtime'))")
             else:
                 # Mysql DB
-                pass
+                curDBLog.execute("CREATE TABLE IF NOT EXISTS sip_start (SIPStartId int NOT NULL AUTO_INCREMENT, SIPStartTime datetime NOT NULL DEFAULT NOW(), PRIMARY KEY (SIPStartId))")
+                curDBLog.execute("INSERT INTO sip_start (SIPStartTime) VALUES (NOW())")
 
         conDB.commit()
 
@@ -139,7 +146,7 @@ def on_zone_change(name, **kw):
 
     if gv.srvals != prior:  # check for a change
         mutexDB.acquire()
-        dbIsOpen, conDB, curDBLog = load_connect_2_DB("./data/" + dbDefinitions[u"ipPathDB"] + ".db", dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"])
+        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"])
 
         if not dbIsOpen:
             mutexDB.release()
@@ -153,7 +160,7 @@ def on_zone_change(name, **kw):
                         curDBLog.execute("INSERT INTO valves_raw (ValveRawFK, ValveRawON, ValveRawOFF) VALUES ("+ str(i + 1) +", datetime('now','localtime'), datetime('now','localtime'))")
                     else:
                         # Mysql DB
-                        pass
+                        curDBLog.execute("INSERT INTO valves_raw (ValveRawFK, ValveRawON, ValveRawOFF) VALUES ("+ str(i + 1) +", NOW(), NOW())")
                 else: # station is off
                     # start to check if any on to complete with of
                     res = curDBLog.execute("SELECT * FROM valves_raw WHERE ValveRawON = ValveRawOFF AND ValveRawFK = "+ str(i + 1) +" ORDER BY ValveRawId DESC")
@@ -161,7 +168,11 @@ def on_zone_change(name, **kw):
                     if data is not None:
                         if len(data) == 4:
                             # Add turn of in on register
-                            curDBLog.execute("UPDATE valves_raw SET ValveRawOFF = datetime('now','localtime') WHERE ValveRawId = "+ str(data[0]))
+                            if dbDefinitions[u"serverType"] == 'sqlLite':
+                                curDBLog.execute("UPDATE valves_raw SET ValveRawOFF = datetime('now','localtime') WHERE ValveRawId = "+ str(data[0]))
+                            else:
+                                # Mysql
+                                curDBLog.execute("UPDATE valves_raw SET ValveRawOFF = NOW() WHERE ValveRawId = "+ str(data[0]))
 
         conDB.commit()
         mutexDB.release()
