@@ -1,0 +1,45 @@
+$def with(records)
+
+$var title: $_(u'SIP DB Logger Turn ON') 
+$var page: db_logger
+
+<script>
+    jQuery(document).ready(function(){
+		jQuery("button#cDefinition").click(function () {
+			window.location = "/dblog";
+        });
+		jQuery("button#cTableTurnOn").click(function () {
+			window.location = "/dblogturnon";
+        });
+    });
+</script>
+
+<style>
+.columnName {
+    text-align: center;
+}
+</style>
+
+<div id="plugin">
+    <!--     <div class="title">Command Line Control -->
+    <!--     <button class="execute" id="docButton" type="button" >$_('Help')</button> -->
+    <!--     </div> -->
+    <div>
+        <p>Log with turn on.</p>
+    </div>
+
+    <div class="controls">
+        <button id="cDefinition"><b>Definitions</b></button>
+        <button id="cTableTurnOn">Log Turn On</button>
+    </div>
+
+    <div id="sapo">
+        <table style="width:100%" border="1">
+            $for data in records:
+                <tr>
+                    <td>${data}</td>
+                </tr>
+        </table>
+        <br /><br />
+    </div>
+</div>

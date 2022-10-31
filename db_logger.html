@@ -12,6 +12,12 @@ $var page: db_logger
         jQuery("button#cCancel").click(function(){
             window.location= "/";
         });
+		jQuery("button#cDefinition").click(function () {
+			window.location = "/dblog";
+        });
+		jQuery("button#cTableTurnOn").click(function () {
+			window.location = "/dblogturnon";
+		});
     });
 </script>
 
@@ -28,6 +34,12 @@ $var page: db_logger
     <div>
         <p>This plugin can be used to save logs in DB, usefull to stattistics.</p>
     </div>
+
+    <div class="controls">
+        <button id="cDefinition"><b>Definitions</b></button>
+        <button id="cTableTurnOn">Log Turn On</button>
+    </div>
+
     <div>
         <br />
 

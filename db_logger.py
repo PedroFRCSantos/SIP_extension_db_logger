@@ -39,6 +39,7 @@ urls.extend(
         u"/dblog", u"plugins.db_logger.settings",
         u"/dbjsonlog", u"plugins.db_logger.settings_json",
         u"/dblogupdate", u"plugins.db_logger.update",
+        u"/dblogturnon", u"plugins.db_logger.turn_on_display",
     ]
 )
 # fmt: on
@@ -179,13 +180,13 @@ def on_zone_change(name, **kw):
 
     if gv.srvals != prior:  # check for a change
         mutexDB.acquire()
-        if dbDefinitions[u"serverType"] != 'fromFile':
+        if dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
             dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"])
 
             if not dbIsOpen:
                 mutexDB.release()
                 return
-        else:
+        elif dbDefinitions[u"serverType"] == 'fromFile':
             file2SaveDB = open(u"./data/db_logger_valves_raw.txt", "a")
 
         for i in range(len(gv.srvals)):
@@ -196,13 +197,12 @@ def on_zone_change(name, **kw):
                         curDBLog.execute("INSERT INTO valves_raw (ValveRawFK, ValveRawON, ValveRawOFF) VALUES ("+ str(i + 1) +", datetime('now','localtime'), datetime('now','localtime'))")
                     elif dbDefinitions[u"serverType"] == 'fromFile':
                         file2SaveDB.write(str(i + 1) + ", " + str(datetime.now()) + ", ON\n")
-                    else:
-                        # Mysql DB
+                    elif dbDefinitions[u"serverType"] == 'mySQL':
                         curDBLog.execute("INSERT INTO valves_raw (ValveRawFK, ValveRawON, ValveRawOFF) VALUES ("+ str(i + 1) +", NOW(), NOW())")
                 else: # station is off
                     if dbDefinitions[u"serverType"] == 'fromFile':
                         file2SaveDB.write(str(i + 1) + ", " + str(datetime.now()) + ", OFF\n")
-                    else:
+                    elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
                         # start to check if any on to complete with of
                         res = curDBLog.execute("SELECT * FROM valves_raw WHERE ValveRawON = ValveRawOFF AND ValveRawFK = "+ str(i + 1) +" ORDER BY ValveRawId DESC")
                         data = res.fetchone()
@@ -217,7 +217,7 @@ def on_zone_change(name, **kw):
 
         if dbDefinitions[u"serverType"] == 'fromFile':
             file2SaveDB.close()
-        else:
+        elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
             conDB.commit()
         mutexDB.release()
 
@@ -233,11 +233,35 @@ zones.connect(on_zone_change)
 
 
 class settings(ProtectedPage):
-    """Load an html page for entering cli_control commands"""
+    """Load an html page for entering db logs commands"""
 
     def GET(self):
         return template_render.db_logger(dbDefinitions)
 
+class turn_on_display(ProtectedPage):
+    """Load an html page for entering cli_control commands"""
+
+    def GET(self):
+        records = []
+        if dbDefinitions[u"serverType"] == 'fromFile':
+            fileLog = open(u"./data/db_logger_sip_turn_on.txt", 'r')
+            while True:
+                line = fileLog.readline()
+                records.append(line)
+                if len(records) > 30 + 1:
+                    records.pop(0)
+
+                if not line:
+                    break
+
+            fileLog.close()
+            records.reverse()
+
+            records.pop(0)
+        elif False:
+            pass
+
+        return template_render.db_logger_turn_on(records)
 
 class settings_json(ProtectedPage):
     """Returns plugin settings in JSON format"""
