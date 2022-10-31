@@ -35,6 +35,11 @@ $var page: db_logger
             <select name="dbType" id="dbType">
                 <option value="none">None</option>
 
+                $if dbDefinitions[u"serverType"] == 'fromFile':
+                    <option value="fromFile" selected="selected">From File</option>
+                $else:
+                    <option value="fromFile">From File</option>
+
                 $if dbDefinitions[u"serverType"] == 'sqlLite':
                     <option value="sqlLite" selected="selected">SQ Lite</option>
                 $else:
