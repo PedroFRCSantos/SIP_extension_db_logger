@@ -1,4 +1,4 @@
-$def with(records)
+$def with(records, numberOfReg)
 
 $var title: $_(u'SIP DB Logger Turn ON') 
 $var page: db_logger
@@ -33,7 +33,41 @@ $var page: db_logger
         <button id="cTableTurnOn">Log Turn On</button>
     </div>
 
-    <div id="sapo">
+    <div>
+        <form action="./dblogturnon">
+            <select name="reg2view">
+                $if numberOfReg == 5:
+                    <option value="5" selected="selected">5</option>
+                $else:
+                    <option value="5">5</option>
+
+                $if numberOfReg == 10:
+                    <option value="10" selected="selected">10</option>
+                $else:
+                    <option value="10">10</option>
+
+                $if numberOfReg == 30:
+                    <option value="30" selected="selected">30</option>
+                $else:
+                    <option value="30">30</option>
+
+                $if numberOfReg == 100:
+                    <option value="100" selected="selected">100</option>
+                $else:
+                    <option value="100">100</option>
+
+                $if numberOfReg == 200:
+                    <option value="200" selected="selected">200</option>
+                $else:
+                    <option value="200">200</option>
+            </select>
+            <button id="cTableTurnOn">Reload</button>
+        </form>
+    </div>
+
+    <br />
+
+    <div>
         <table style="width:100%" border="1">
             $for data in records:
                 <tr>

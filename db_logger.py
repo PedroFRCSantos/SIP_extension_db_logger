@@ -243,12 +243,25 @@ class turn_on_display(ProtectedPage):
 
     def GET(self):
         records = []
+        numberOfReg = 30
+
+        qdict = web.input()
+        if u"reg2view" in qdict:
+            try:
+                numberOfReg = int(qdict[u"reg2view"])
+                if numberOfReg < 1:
+                    numberOfReg = 1
+            except ValueError:
+                pass
+
+        mutexDB.acquire()
+
         if dbDefinitions[u"serverType"] == 'fromFile':
             fileLog = open(u"./data/db_logger_sip_turn_on.txt", 'r')
             while True:
                 line = fileLog.readline()
                 records.append(line)
-                if len(records) > 30 + 1:
+                if len(records) > numberOfReg + 1:
                     records.pop(0)
 
                 if not line:
@@ -258,10 +271,22 @@ class turn_on_display(ProtectedPage):
             records.reverse()
 
             records.pop(0)
-        elif False:
-            pass
+        elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
+            dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"])
+            if dbIsOpen:
+                curDBLog.execute("SELECT SIPStartTime FROM sip_start ORDER BY SIPStartTime DESC LIMIT "+str(numberOfReg))
+                recordsRaw = curDBLog.fetchall()
+                # Clean up data to display in page
+                for currData in recordsRaw:
+                    if dbDefinitions[u"serverType"] == 'sqlLite':
+                        records.append(currData[0])
+                    else:
+                        # mySQL
+                        records.append(str(currData[0].year)+"/"+str(currData[0].month)+"/"+str(currData[0].day)+" "+str(currData[0].hour)+":"+str(currData[0].minute)+":"+str(currData[0].second))
 
-        return template_render.db_logger_turn_on(records)
+        mutexDB.release()
+
+        return template_render.db_logger_turn_on(records, numberOfReg)
 
 class settings_json(ProtectedPage):
     """Returns plugin settings in JSON format"""
