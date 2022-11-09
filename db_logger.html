@@ -17,6 +17,9 @@ $var page: db_logger
         });
 		jQuery("button#cTableTurnOn").click(function () {
 			window.location = "/dblogturnon";
+        });
+		jQuery("button#cTableValveLogs").click(function () {
+			window.location = "/dblogvalve";
 		});
     });
 </script>
@@ -38,6 +41,7 @@ $var page: db_logger
     <div class="controls">
         <button id="cDefinition"><b>Definitions</b></button>
         <button id="cTableTurnOn">Log Turn On</button>
+        <button id="cTableValveLogs">Valve Logs</button>
     </div>
 
     <div>

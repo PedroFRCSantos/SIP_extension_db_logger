@@ -38,7 +38,7 @@ $var page: db_logger
     </div>
 
     <div>
-        <form action="./dblogturnon">
+        <form action="./dblogvalve">
             <select name="reg2view">
                 $if numberOfReg == 5:
                     <option value="5" selected="selected">5</option>
@@ -73,9 +73,22 @@ $var page: db_logger
 
     <div>
         <table style="width:100%" border="1">
+            <tr>
+                <th>Valve Name:</th>
+                <th>Turn ON time:</th>
+                <th>Turn OFF time</th>
+                <th>Time ON</th>
+            </tr>
             $for data in records:
                 <tr>
-                    <td>${data}</td>
+                    <td>${data[2]}</td>
+                    <td>${data[0]}</td>
+                    $if data[0] == data[1]:
+                        <td></td>
+                        <td></td>
+                    $else:
+                        <td>${data[1]}</td>
+                        <td>${data[3]}</td>
                 </tr>
         </table>
         <br /><br />

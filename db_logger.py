@@ -5,8 +5,11 @@ from __future__ import print_function
 
 # standard library imports
 import json
+from math import floor
 import subprocess
+from sys import float_repr_style
 import time
+import os
 
 # Library to use DB
 try:
@@ -22,7 +25,7 @@ except ImportError:
     withDBLoggerMysql = False
 
 from threading import Thread, Lock
-from datetime import datetime
+import datetime
 
 # local module imports
 from blinker import signal
@@ -40,6 +43,7 @@ urls.extend(
         u"/dbjsonlog", u"plugins.db_logger.settings_json",
         u"/dblogupdate", u"plugins.db_logger.update",
         u"/dblogturnon", u"plugins.db_logger.turn_on_display",
+        u"/dblogvalve", u"plugins.db_logger.valve_status_display",
     ]
 )
 # fmt: on
@@ -68,8 +72,11 @@ def load_connect_2_DB(ipPathDB, userName, passWord, dbName):
         dbIsOpen = True
     elif dbDefinitions[u"serverType"] == 'mySQL':
         # Mysql
-        conDB = mysql.connector.connect(host = ipPathDB, user = userName, password = passWord)
-        dbIsOpen = True
+        try:
+            conDB = mysql.connector.connect(host = ipPathDB, user = userName, password = passWord)
+            dbIsOpen = True
+        except mysql.connector.Error as err:
+            print("Something went wrong: {}".format(err))
     elif dbDefinitions[u"serverType"] == 'fromFile':
         dbIsOpen = True
 
@@ -149,7 +156,7 @@ def load_commands():
                 curDBLog.execute("INSERT INTO sip_start (SIPStartTime) VALUES (datetime('now','localtime'))")
             elif dbDefinitions[u"serverType"] == 'fromFile':
                 file2SaveDB = open(u"./data/db_logger_sip_turn_on.txt", "a")
-                file2SaveDB.write(str(datetime.now()) + "\n")
+                file2SaveDB.write(str(datetime.datetime.now()) + "\n")
                 file2SaveDB.close()
             elif dbDefinitions[u"serverType"] == 'mySQL':
                 curDBLog.execute("CREATE TABLE IF NOT EXISTS sip_start (SIPStartId int NOT NULL AUTO_INCREMENT, SIPStartTime datetime NOT NULL DEFAULT NOW(), PRIMARY KEY (SIPStartId))")
@@ -187,7 +194,8 @@ def on_zone_change(name, **kw):
                 mutexDB.release()
                 return
         elif dbDefinitions[u"serverType"] == 'fromFile':
-            file2SaveDB = open(u"./data/db_logger_valves_raw.txt", "a")
+            today = datetime.date.today()
+            file2SaveDB = open(u"./data/db_logger_valves_raw"+ str(today.year) +"_"+ str(today.month) +".txt", "a")
 
         for i in range(len(gv.srvals)):
             if gv.srvals[i] != prior[i]:  #  this station has changed
@@ -196,16 +204,16 @@ def on_zone_change(name, **kw):
                     if dbDefinitions[u"serverType"] == 'sqlLite':
                         curDBLog.execute("INSERT INTO valves_raw (ValveRawFK, ValveRawON, ValveRawOFF) VALUES ("+ str(i + 1) +", datetime('now','localtime'), datetime('now','localtime'))")
                     elif dbDefinitions[u"serverType"] == 'fromFile':
-                        file2SaveDB.write(str(i + 1) + ", " + str(datetime.now()) + ", ON\n")
+                        file2SaveDB.write(str(i + 1) + ", " + str(datetime.datetime.now()) + ", ON\n")
                     elif dbDefinitions[u"serverType"] == 'mySQL':
                         curDBLog.execute("INSERT INTO valves_raw (ValveRawFK, ValveRawON, ValveRawOFF) VALUES ("+ str(i + 1) +", NOW(), NOW())")
                 else: # station is off
                     if dbDefinitions[u"serverType"] == 'fromFile':
-                        file2SaveDB.write(str(i + 1) + ", " + str(datetime.now()) + ", OFF\n")
+                        file2SaveDB.write(str(i + 1) + ", " + str(datetime.datetime.now()) + ", OFF\n")
                     elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
                         # start to check if any on to complete with of
-                        res = curDBLog.execute("SELECT * FROM valves_raw WHERE ValveRawON = ValveRawOFF AND ValveRawFK = "+ str(i + 1) +" ORDER BY ValveRawId DESC")
-                        data = res.fetchone()
+                        curDBLog.execute("SELECT * FROM valves_raw WHERE ValveRawON = ValveRawOFF AND ValveRawFK = "+ str(i + 1) +" ORDER BY ValveRawId DESC")
+                        data = curDBLog.fetchone()
                         if data is not None:
                             if len(data) == 4:
                                 # Add turn of in on register
@@ -287,6 +295,112 @@ class turn_on_display(ProtectedPage):
         mutexDB.release()
 
         return template_render.db_logger_turn_on(records, numberOfReg)
+
+def estimate_compose_dif_date_time(d1, d2):
+    # estimate diff for human
+    diff = (d2 - d1).total_seconds()
+    numberOfDay = floor(diff / (60*60*24))
+    numberOfHour = floor((diff - numberOfDay *60*60*24) / (60*60))
+    numberOfMinute = floor((diff - numberOfDay *60*60*24 - numberOfHour*60*60) / 60)
+    numberOfSecond = round(diff - numberOfDay *60*60*24 - numberOfHour*60*60 - numberOfMinute*60, 2)
+
+    str2ShowDiff = "";
+    if numberOfDay > 0:
+        str2ShowDiff = str2ShowDiff + str(numberOfDay) +"d "
+    if numberOfHour < 10:
+        str2ShowDiff = str2ShowDiff +"0"+ str(numberOfHour)
+    else:
+        str2ShowDiff = str2ShowDiff + str(numberOfHour)
+    if numberOfMinute < 10:
+        str2ShowDiff = str2ShowDiff +":0"+ str(numberOfMinute)
+    else:
+        str2ShowDiff = str2ShowDiff +":"+ str(numberOfMinute)
+    str2ShowDiff = str2ShowDiff +":"+ str(numberOfSecond)
+
+    return str2ShowDiff
+
+class valve_status_display(ProtectedPage):
+    """Load an html page display valves change"""
+
+    def GET(self):
+        records = []
+        numberOfReg = 30
+
+        qdict = web.input()
+        if u"reg2view" in qdict:
+            try:
+                numberOfReg = int(qdict[u"reg2view"])
+                if numberOfReg < 1:
+                    numberOfReg = 1
+            except ValueError:
+                pass
+
+        mutexDB.acquire()
+
+        if dbDefinitions[u"serverType"] == 'fromFile':
+            dirPath = u"./data/"
+
+            res = []
+            for path in os.listdir(dirPath):
+                if os.path.isfile(os.path.join(dirPath, path)):
+                    if path[0:len("db_logger_valves_raw")] == "db_logger_valves_raw":
+                        res.append(path)
+
+            res = sorted(res, reverse=False)
+            for file2Read in res:
+                fileLog = open(dirPath + file2Read, 'r')
+                while True:
+                    line = fileLog.readline()
+                    if not line:
+                        break
+
+                    lineSplit = line.split(',')
+                    if len(lineSplit) != 3:
+                        continue
+
+                    lineSplit[2] = lineSplit[2].strip()
+
+                    if lineSplit[2] == "ON":
+                        records.insert(0, [lineSplit[1], "", lineSplit[0], ""])
+                        if len(records) > numberOfReg:
+                            records.pop(len(records) - 1)
+                    elif lineSplit[2] == "OFF":
+                        for checkRecord in records:
+                            if checkRecord[2] == lineSplit[0]:
+                                checkRecord[1] = lineSplit[1]
+                                # estimate on time
+                                d1 = datetime.datetime.strptime((((checkRecord[0]).split('.'))[0].replace('-', '/'))[1:], '%Y/%m/%d %H:%M:%S')
+                                d2 = datetime.datetime.strptime((((checkRecord[1]).split('.'))[0].replace('-', '/'))[1:], '%Y/%m/%d %H:%M:%S')
+
+                                checkRecord[3] = estimate_compose_dif_date_time(d1, d2)
+            
+            # Sustitute numbers by names
+            for record2Change in records:
+                indexRecord = int(record2Change[2])
+                record2Change[2] = gv.snames[indexRecord - 1]
+        elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
+            dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"])
+            if dbIsOpen:
+                curDBLog.execute("SELECT ValveRawON, ValveRawOFF, ValveIdName FROM valves_raw, valves_id WHERE ValveId = ValveRawFK ORDER BY ValveRawON DESC LIMIT "+str(numberOfReg))
+                recordsRaw = curDBLog.fetchall()
+                # Clean up data to display in page
+                for currData in recordsRaw:
+                    newRow = []
+                    if dbDefinitions[u"serverType"] == 'sqlLite':
+                        newRow = [currData[0], currData[1], currData[2]]
+                    else:
+                        # mySQL
+                        newRow = [str(currData[0].year)+"/"+str(currData[0].month)+"/"+str(currData[0].day)+" "+str(currData[0].hour)+":"+str(currData[0].minute)+":"+str(currData[0].second), str(currData[1].year)+"/"+str(currData[1].month)+"/"+str(currData[1].day)+" "+str(currData[1].hour)+":"+str(currData[1].minute)+":"+str(currData[1].second), currData[2]]
+                    
+                    d1 = datetime.datetime.strptime(str(newRow[0]), '%Y/%m/%d %H:%M:%S')
+                    d2 = datetime.datetime.strptime(str(newRow[1]), '%Y/%m/%d %H:%M:%S')
+
+                    newRow.append(estimate_compose_dif_date_time(d1, d2))
+                    records.append(newRow)
+
+        mutexDB.release()
+
+        return template_render.db_logger_valve_status(records, numberOfReg)
 
 class settings_json(ProtectedPage):
     """Returns plugin settings in JSON format"""
