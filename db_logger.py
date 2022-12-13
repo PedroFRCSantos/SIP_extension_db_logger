@@ -2,6 +2,7 @@
 
 # Python 2/3 compatibility imports
 from __future__ import print_function
+from itertools import count
 
 # standard library imports
 import json
@@ -295,6 +296,48 @@ class turn_on_display(ProtectedPage):
         mutexDB.release()
 
         return template_render.db_logger_turn_on(records, numberOfReg)
+
+def estimate_number_of_turn_on_by_month():
+    statsMonthOut = {}
+
+    mutexDB.acquire()
+
+    if dbDefinitions[u"serverType"] == 'fromFile':
+        fileLog = open(u"./data/db_logger_sip_turn_on.txt", 'r')
+        while True:
+            line = fileLog.readline()
+
+            if not line:
+                break
+            else:
+                lineSplit = line.split("-")
+                if len(lineSplit) == 3:
+                    if (lineSplit[0] + "-" + lineSplit[1]) not in statsMonthOut:
+                        statsMonthOut[lineSplit[0] + "-" + lineSplit[1]] = 1
+                    else:
+                        statsMonthOut[lineSplit[0] + "-" + lineSplit[1]] = statsMonthOut[lineSplit[0] + "-" + lineSplit[1]] + 1
+
+        fileLog.close()
+    elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
+        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"])
+        if dbIsOpen:
+            if dbDefinitions[u"serverType"] == 'sqlLite':
+                curDBLog.execute("SELECT SIPStartTime, COUNT(SIPStartTime) as Total FROM sip_start GROUP BY strftime(\"%m-%Y\", SIPStartTime)")
+            else:
+                curDBLog.execute("SELECT SIPStartTime, COUNT(SIPStartTime) as Total FROM sip_start GROUP BY YEAR(SIPStartTime), MONTH(SIPStartTime)")
+            recordsRaw = curDBLog.fetchall()
+            # Clean up data to display in page
+            for currData in recordsRaw:
+                if dbDefinitions[u"serverType"] == 'sqlLite':
+                    lineSplit = currData[0].split("-")
+                    statsMonthOut[lineSplit[0] + "-" + lineSplit[1]] = int(currData[1])
+                else:
+                    # mySQL
+                    statsMonthOut[str(currData[0].year) + "-" + str(currData[0].month)] = int(currData[1])
+
+    mutexDB.release()
+
+    return statsMonthOut
 
 def estimate_compose_dif_date_time(d1, d2):
     # estimate diff for human
