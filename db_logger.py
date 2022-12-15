@@ -28,6 +28,8 @@ except ImportError:
 from threading import Thread, Lock
 import datetime
 
+import calendar
+
 # local module imports
 from blinker import signal
 import gv  # Get access to SIP's settings, gv = global variables
@@ -339,13 +341,175 @@ def estimate_number_of_turn_on_by_month():
 
     return statsMonthOut
 
-def estimate_compose_dif_date_time(d1, d2):
-    # estimate diff for human
-    diff = (d2 - d1).total_seconds()
-    numberOfDay = floor(diff / (60*60*24))
-    numberOfHour = floor((diff - numberOfDay *60*60*24) / (60*60))
-    numberOfMinute = floor((diff - numberOfDay *60*60*24 - numberOfHour*60*60) / 60)
-    numberOfSecond = round(diff - numberOfDay *60*60*24 - numberOfHour*60*60 - numberOfMinute*60, 2)
+def get_list_of_files_valves_raw():
+    res = []
+
+    if dbDefinitions[u"serverType"] == 'fromFile':
+        dirPath = u"./data/"
+
+        for path in os.listdir(dirPath):
+            if os.path.isfile(os.path.join(dirPath, path)):
+                if path[0:len("db_logger_valves_raw")] == "db_logger_valves_raw":
+                    res.append(path)
+
+        res = sorted(res, reverse=False)
+
+    return res
+
+def get_list_of_valves():
+    listValves = []
+    dirPath = u"./data/"
+
+    mutexDB.acquire()
+
+    listOfFiles = get_list_of_files_valves_raw()
+    for file2Read in listOfFiles:
+        fileLog = open(dirPath + file2Read, 'r')
+        while True:
+            line = fileLog.readline()
+            if not line:
+                break
+            lineSplit = line.split(',')
+            if len(lineSplit) == 3 and lineSplit[0].isnumeric():
+                listValves.append(int(lineSplit[0]))
+
+        listValves = list(set(listValves))
+
+    listValves.sort()
+
+    mutexDB.release()
+
+    listValvesWithNames = []
+    for indexRecord in listValves:
+        listValvesWithNames.append([indexRecord, gv.snames[indexRecord - 1]])
+
+    return listValvesWithNames
+
+def estimate_valves_turnon_in_month():
+    statsMonthOut = {}
+
+    mutexDB.acquire()
+
+    mutexDB.release()
+
+    return statsMonthOut
+
+def min_year_month(year1, month1, year2, month2):
+    minYear = 0
+    minMonth = 0
+
+    if year1 < year2:
+        minYear = year1
+        minMonth = month1
+    elif year1 > year2:
+        minYear = year2
+        minMonth = month2
+    elif month1 < month2:
+        minYear = year1
+        minMonth = month1
+    else:
+        minYear = year2
+        minMonth = month2
+
+    return minYear, minMonth
+
+def max_year_month(year1, month1, year2, month2):
+    minYear = 0
+    minMonth = 0
+
+    if year1 < year2:
+        minYear = year2
+        minMonth = month2
+    elif year1 > year2:
+        minYear = year1
+        minMonth = month1
+    elif month1 < month2:
+        minYear = year2
+        minMonth = month2
+    else:
+        minYear = year2
+        minMonth = month2
+
+    return minYear, minMonth
+
+def estimate_valve_turnon_by_month(valveId, yearMin, monthMin, yearMax, monthMax):
+    statsMonthOut = {}
+
+    mutexDB.acquire()
+
+    if dbDefinitions[u"serverType"] == 'fromFile':
+        listOfFiles = get_list_of_files_valves_raw()
+        dirPath = u"./data/"
+
+        auxValveOn = {}
+
+        for file2Read in listOfFiles:
+            fileLog = open(dirPath + file2Read, 'r')
+            while True:
+                line = fileLog.readline()
+                if not line:
+                    break
+
+                # split line to get data
+                lineSplit = line.split(',')
+                if len(lineSplit) == 3:
+                    if lineSplit[0].isnumeric():
+                        lineValveRaw = int(lineSplit[0])
+                        if valveId == lineValveRaw and lineSplit[2].replace(" ", "").replace("\n", "").replace("\r", "") == 'ON':
+                            auxValveOn["Valve"+str(valveId)] = lineSplit[1]
+                        elif valveId == lineValveRaw and lineSplit[2].replace(" ", "").replace("\n", "").replace("\r", "") == 'OFF':
+                            if "Valve"+str(valveId) in auxValveOn:
+                                dOn = datetime.datetime.strptime((((auxValveOn["Valve"+str(valveId)]).split('.'))[0].replace('-', '/'))[1:], '%Y/%m/%d %H:%M:%S')
+                                dOff = datetime.datetime.strptime((((lineSplit[1]).split('.'))[0].replace('-', '/'))[1:], '%Y/%m/%d %H:%M:%S')
+
+                                # if out of gap
+                                if dOn.year > yearMax or (dOn.year == yearMax and dOn.month > monthMax):
+                                    continue
+                                if dOff.year < yearMin or (dOff.year == yearMin and dOff.month < monthMin):
+                                    continue
+
+                                gapLowYear, gapLowMonth = max_year_month(dOn.year, dOn.month, yearMin, monthMin)
+                                gapHigthYear, gapHigthMonth = max_year_month(dOff.year, dOff.month, yearMax, monthMax)
+
+                                currentYear = gapLowYear
+                                currentMonth = gapLowMonth
+
+                                while currentYear < gapHigthYear or (currentYear == gapHigthYear and currentMonth <= gapHigthMonth):
+                                    accumTimeSeconds = 0
+                                    currentMonthMaxDay = calendar.monthrange(currentYear, currentMonth)[1]
+
+                                    if (currentYear > dOn.year or (currentYear == dOn.year and currentMonth >= dOn.month)) and (currentYear < dOff.year or (currentYear == dOff.year and currentMonth <= dOff.month)):
+                                        accumTimeSeconds = accumTimeSeconds + currentMonthMaxDay * 24 * 60 * 60
+
+                                    if dOn.year == currentYear and dOn.month == currentMonth:
+                                        # on in the current month, discont from begin of month
+                                        beginDateTimeMonth = datetime.datetime(currentYear, currentMonth, 1)
+                                        time2Discount = (dOn - beginDateTimeMonth).total_seconds()
+                                        accumTimeSeconds = accumTimeSeconds - time2Discount
+
+                                    if dOff.year == yearMin and dOff.month == currentMonth:
+                                        # off is inside, discount until the end of month
+                                        endDateTimeMonth = datetime.datetime(currentYear, currentMonth, currentMonthMaxDay, 23, 59, 59, 999999)
+                                        time2Discount = (endDateTimeMonth - dOff).total_seconds()
+                                        accumTimeSeconds = accumTimeSeconds - time2Discount
+
+                                    statsMonthOut[str(currentYear) + str(currentMonth)] = estimate_compose_dif_date_time_sec(accumTimeSeconds)
+
+                                    currentMonth = currentMonth + 1
+                                    if currentMonth > 12:
+                                        currentMonth = 1
+                                        currentYear = currentYear + 1
+
+
+    mutexDB.release()
+
+    return statsMonthOut
+
+def estimate_compose_dif_date_time_sec(diffSeconds):
+    numberOfDay = floor(diffSeconds / (60*60*24))
+    numberOfHour = floor((diffSeconds - numberOfDay *60*60*24) / (60*60))
+    numberOfMinute = floor((diffSeconds - numberOfDay *60*60*24 - numberOfHour*60*60) / 60)
+    numberOfSecond = round(diffSeconds - numberOfDay *60*60*24 - numberOfHour*60*60 - numberOfMinute*60, 2)
 
     str2ShowDiff = "";
     if numberOfDay > 0:
@@ -361,6 +525,11 @@ def estimate_compose_dif_date_time(d1, d2):
     str2ShowDiff = str2ShowDiff +":"+ str(numberOfSecond)
 
     return str2ShowDiff
+
+def estimate_compose_dif_date_time(d1, d2):
+    # estimate diff for human
+    diff = (d2 - d1).total_seconds()
+    return estimate_compose_dif_date_time_sec(diff)
 
 class valve_status_display(ProtectedPage):
     """Load an html page display valves change"""
