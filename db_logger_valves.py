@@ -114,42 +114,6 @@ def estimate_valves_turnon_in_month():
 
     return statsMonthOut
 
-def estive_valve_turnon_by_month_entry(dOn, dOff, yearMin, monthMin, yearMax, monthMax, statsMonthOut):
-    gapLowYear, gapLowMonth = max_year_month(dOn.year, dOn.month, yearMin, monthMin)
-    gapHigthYear, gapHigthMonth = max_year_month(dOff.year, dOff.month, yearMax, monthMax)
-
-    currentYear = gapLowYear
-    currentMonth = gapLowMonth
-
-    while currentYear < gapHigthYear or (currentYear == gapHigthYear and currentMonth <= gapHigthMonth):
-        accumTimeSeconds = 0
-        currentMonthMaxDay = calendar.monthrange(currentYear, currentMonth)[1]
-
-        if (currentYear > dOn.year or (currentYear == dOn.year and currentMonth >= dOn.month)) and (currentYear < dOff.year or (currentYear == dOff.year and currentMonth <= dOff.month)):
-            accumTimeSeconds = accumTimeSeconds + currentMonthMaxDay * 24 * 60 * 60
-
-        if dOn.year == currentYear and dOn.month == currentMonth:
-            # on in the current month, discont from begin of month
-            beginDateTimeMonth = datetime.datetime(currentYear, currentMonth, 1)
-            time2Discount = (dOn - beginDateTimeMonth).total_seconds()
-            accumTimeSeconds = accumTimeSeconds - time2Discount
-
-        if dOff.year == yearMin and dOff.month == currentMonth:
-            # off is inside, discount until the end of month
-            endDateTimeMonth = datetime.datetime(currentYear, currentMonth, currentMonthMaxDay, 23, 59, 59, 999999)
-            time2Discount = (endDateTimeMonth - dOff).total_seconds()
-            accumTimeSeconds = accumTimeSeconds - time2Discount
-
-        try:
-            statsMonthOut[str(currentYear) + str(currentMonth)] = statsMonthOut[str(currentYear) + str(currentMonth)] + accumTimeSeconds
-        except:
-            statsMonthOut[str(currentYear) + str(currentMonth)] = accumTimeSeconds
-
-        currentMonth = currentMonth + 1
-        if currentMonth > 12:
-            currentMonth = 1
-            currentYear = currentYear + 1
-
 def estimate_valve_turnon_by_month(valveId, yearMin, monthMin, yearMax, monthMax):
     global mutexDB
 
@@ -217,6 +181,71 @@ def estimate_valve_turnon_by_month(valveId, yearMin, monthMin, yearMax, monthMax
         statsMonthOut[key] = estimate_compose_dif_date_time_sec(statsMonthOut[key])
 
     return statsMonthOut
+
+def estimate_valve_turnon_by_day(valveId, yearMin, monthMin, dayMin, yearMax, monthMax, dayMax):
+    global mutexDB
+
+    statsPeriod = {}
+
+    dbDefinitions = gv.dbDefinitions
+
+    minDate = datetime.datetime(yearMin, monthMin, dayMin)
+    maxDate = datetime.datetime(yearMax, monthMax, dayMax)
+
+    mutexDB.acquire()
+
+    if dbDefinitions[u"serverType"] == 'fromFile':
+        listOfFiles = get_list_of_files_valves_raw()
+        dirPath = u"./data/"
+
+        auxValveOn = {}
+
+        for file2Read in listOfFiles:
+            fileLog = open(dirPath + file2Read, 'r')
+            while True:
+                line = fileLog.readline()
+                if not line:
+                    break
+
+                # split line to get data
+                lineSplit = line.split(',')
+                if len(lineSplit) == 3:
+                    if lineSplit[0].isnumeric():
+                        lineValveRaw = int(lineSplit[0])
+                        if valveId == lineValveRaw and lineSplit[2].replace(" ", "").replace("\n", "").replace("\r", "") == 'ON':
+                            auxValveOn["Valve"+str(valveId)] = lineSplit[1]
+                        elif valveId == lineValveRaw and lineSplit[2].replace(" ", "").replace("\n", "").replace("\r", "") == 'OFF':
+                            if "Valve"+str(valveId) in auxValveOn:
+                                dOn = datetime.datetime.strptime((((auxValveOn["Valve"+str(valveId)]).split('.'))[0].replace('-', '/'))[1:], '%Y/%m/%d %H:%M:%S')
+                                dOff = datetime.datetime.strptime((((lineSplit[1]).split('.'))[0].replace('-', '/'))[1:], '%Y/%m/%d %H:%M:%S')
+
+                                estimate_valve_turn_on_by_day_entry(dOn, dOff, minDate, maxDate, statsPeriod)
+    elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
+        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
+        if dbIsOpen:
+            currentMonthMaxDay = calendar.monthrange(yearMax, monthMax)[1]
+            sqlQuery = "SELECT ValveRawFK, ValveRawON, ValveRawOFF FROM valves_raw WHERE ValveRawON != ValveRawOFF AND ValveRawON <= '"+ str(yearMax) +"-"+ str(monthMax) +"-"+ str(currentMonthMaxDay) +" 23:59:59' AND ValveRawOFF >= '"+ str(yearMin) +"-"+ str(monthMin) +"-01 00:00:00'"
+            curDBLog.execute(sqlQuery)
+            # Clean up data to display in page
+            for currData in curDBLog:
+                if int(currData[0]) == valveId:
+                    if dbDefinitions[u"serverType"] == 'mySQL':
+                        # mySQL
+                        newRow = [str(currData[1].year)+"/"+str(currData[1].month)+"/"+str(currData[1].day)+" "+str(currData[1].hour)+":"+str(currData[1].minute)+":"+str(currData[1].second), str(currData[2].year)+"/"+str(currData[2].month)+"/"+str(currData[2].day)+" "+str(currData[2].hour)+":"+str(currData[2].minute)+":"+str(currData[2].second)]
+                    else:
+                        newRow = [currData[0], currData[1], currData[2]]
+
+                    dOn = datetime.datetime.strptime(str(newRow[0]), '%Y/%m/%d %H:%M:%S')
+                    dOff = datetime.datetime.strptime(str(newRow[1]), '%Y/%m/%d %H:%M:%S')
+
+                    estimate_valve_turn_on_by_day_entry(dOn, dOff, minDate, maxDate, statsPeriod)
+
+    mutexDB.release()
+
+    for key in statsPeriod:
+        statsPeriod[key] = estimate_compose_dif_date_time_sec(statsPeriod[key])
+
+    return statsPeriod
 
 def get_reg_valves(numberOfReg, dbDefinitions):
     records = []
