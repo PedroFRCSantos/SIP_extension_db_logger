@@ -313,5 +313,40 @@ def get_reg_valves(numberOfReg, dbDefinitions):
 
     return records
 
+def add_new_table_related_to_valve(tableName, elementsName):
+    # ex: elementsName {table_elem_1 : int, ..., table_elem_N : char}
+    global mutexDB
+
+    dbDefinitions = gv.dbDefinitions
+
+    mutexDB.acquire()
+
+    if dbDefinitions[u"serverType"] == 'fromFile':
+        dirPath = u"./data/"
+
+        fileLog = open(dirPath + tableName + ".cnf", 'a')
+        for key in elementsName:
+            fileLog.write(str(key) + str(elementsName[key]) + '\n')
+
+        fileLog.close()
+    elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
+        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"])
+        if dbIsOpen:
+            queryCreateTable = "CREATE TABLE IF NOT EXISTS table_name" + str(tableName) + "("
+
+            isFirst = True
+            for key in elementsName:
+                if not isFirst:
+                    queryCreateTable = queryCreateTable + ", "
+                else:
+                    isFirst = False
+                queryCreateTable = queryCreateTable + elementsName[key] + " " + key + " NOT NULL"
+
+            queryCreateTable = queryCreateTable + ");"
+            curDBLog.execute("")
+
+    mutexDB.release()
+
+
 
 

@@ -45,8 +45,8 @@ urls.extend(
 # Add this plugin to the plugins menu
 gv.plugin_menu.append([u"DB Logger", u"/dblog"])
 
-def load_commands():
-    global dbDefinitions, mutexDB, file2SaveDB
+def db_logger_read_definitions():
+    dbDefinitions = {}
 
     try:
         with open(u"./data/db_logger.json", u"r") as f:
@@ -56,10 +56,15 @@ def load_commands():
         with open(u"./data/db_logger.json", u"w") as f:
             json.dump(dbDefinitions, f, indent=4)
 
+    return dbDefinitions
+
+def load_commands_db_logger():
+    global dbDefinitions, mutexDB, file2SaveDB
+
+    dbDefinitions = db_logger_read_definitions()
+
     if (dbDefinitions[u"serverType"] == 'sqlLite' and not withDBLoggerSQlite) or (dbDefinitions[u"serverType"] == 'mySQL' and not withDBLoggerMysql):
         return
-
-    gv.dbDefinitions = dbDefinitions
 
     # start to open DB
     mutexDB.acquire()
@@ -71,7 +76,7 @@ def load_commands():
     return
 
 
-load_commands()
+load_commands_db_logger()
 
 #### output command when signal received ####
 def on_zone_change(name, **kw):
