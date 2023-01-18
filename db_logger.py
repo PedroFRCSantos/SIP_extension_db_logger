@@ -45,19 +45,6 @@ urls.extend(
 # Add this plugin to the plugins menu
 gv.plugin_menu.append([u"DB Logger", u"/dblog"])
 
-def db_logger_read_definitions():
-    dbDefinitions = {}
-
-    try:
-        with open(u"./data/db_logger.json", u"r") as f:
-            dbDefinitions = json.load(f)  # Read the commands from file
-    except IOError:  #  If file does not exist create file with defaults.
-        dbDefinitions = {u"serverType": "none", u"userName": "", u"passWord": "", u"ipPathDB": "", u"dbName": "SIPLog", u"saveValveRaw": 0, u"saveProgState": 0, u"saveSIPStart": 0, u"saveSIPStop": 0, u"saveSIPRest": 0, u"saveProgChange": 0, u"saveGeneralDefinitions": 0, u"saveUserLogIn": 0}
-        with open(u"./data/db_logger.json", u"w") as f:
-            json.dump(dbDefinitions, f, indent=4)
-
-    return dbDefinitions
-
 def load_commands_db_logger():
     global dbDefinitions, mutexDB, file2SaveDB
 

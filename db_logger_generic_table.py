@@ -122,43 +122,43 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
                 if recordFK[3] == 'valves_id' and recordFK[4] == 'ValveId':
                     fkFieldName = recordFK[1]
 
-        if (len(fkFieldName) > 0 and valveId > 0) or (len(fkFieldName) == 0 and valveId == 0):
-            # get table structure
-            sqlStrutcture = "Describe " + tableName
-            curDBLog.execute(sqlStrutcture)
-            recordsRaw = curDBLog.fetchall()
+            if (len(fkFieldName) > 0 and valveId > 0) or (len(fkFieldName) == 0 and valveId == 0):
+                # get table structure
+                sqlStrutcture = "Describe " + tableName
+                curDBLog.execute(sqlStrutcture)
+                recordsRaw = curDBLog.fetchall()
 
-            sqlAdd = "INSERT INTO "+ tableName +" ("
-            sqlData = "VALUES ("
-            isFirst = True
-            indx = 0
-            for currData in recordsRaw:
-                if currData[3] == 'PRI' and currData[5] == 'auto_increment':
-                    pass
-                elif currData[0] == fkFieldName:
-                    if isFirst:
-                        isFirst = False
+                sqlAdd = "INSERT INTO "+ tableName +" ("
+                sqlData = "VALUES ("
+                isFirst = True
+                indx = 0
+                for currData in recordsRaw:
+                    if currData[3] == 'PRI' and currData[5] == 'auto_increment':
+                        pass
+                    elif currData[0] == fkFieldName:
+                        if isFirst:
+                            isFirst = False
+                        else:
+                            sqlAdd = sqlAdd + ","
+                            sqlData = sqlData + ","
+                        sqlAdd = sqlAdd + fkFieldName
+                        sqlData = sqlData + str(valveId)
                     else:
-                        sqlAdd = sqlAdd + ","
-                        sqlData = sqlData + ","
-                    sqlAdd = sqlAdd + fkFieldName
-                    sqlData = sqlData + str(valveId)
-                else:
-                    if isFirst:
-                        isFirst = False
-                    else:
-                        sqlAdd = sqlAdd + ","
-                        sqlData = sqlData + ","
-                    sqlAdd = sqlAdd + currData[0]
-                    sqlData = sqlData + listData[indx]
+                        if isFirst:
+                            isFirst = False
+                        else:
+                            sqlAdd = sqlAdd + ","
+                            sqlData = sqlData + ","
+                        sqlAdd = sqlAdd + currData[0]
+                        sqlData = sqlData + listData[indx]
 
-                    indx = indx + 1
+                        indx = indx + 1
 
-            sqlAdd = sqlAdd + ") "
-            sqlData = sqlData + ");"
+                sqlAdd = sqlAdd + ") "
+                sqlData = sqlData + ");"
 
-            curDBLog.execute(sqlAdd + sqlData)
-            conDB.commit()
+                curDBLog.execute(sqlAdd + sqlData)
+                conDB.commit()
 
     mutexDB.release()
 
