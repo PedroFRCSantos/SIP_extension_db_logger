@@ -122,7 +122,7 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
                 if recordFK[3] == 'valves_id' and recordFK[4] == 'ValveId':
                     fkFieldName = recordFK[1]
 
-            if (len(fkFieldName) > 0 and valveId > 0) or (len(fkFieldName) == 0 and valveId == 0):
+            if (len(fkFieldName) > 0 and valveId > 0) or (len(fkFieldName) == 0 and valveId <= 0):
                 # get table structure
                 sqlStrutcture = "Describe " + tableName
                 curDBLog.execute(sqlStrutcture)
@@ -143,6 +143,16 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
                             sqlData = sqlData + ","
                         sqlAdd = sqlAdd + fkFieldName
                         sqlData = sqlData + str(valveId)
+                    elif currData[1] == 'date' or currData[1] == 'datetime' or currData[1] == 'time' or currData[1].lower() == 'TEXT'.lower():
+                        if isFirst:
+                            isFirst = False
+                        else:
+                            sqlAdd = sqlAdd + ","
+                            sqlData = sqlData + ","
+                        sqlAdd = sqlAdd + currData[0]
+                        sqlData = sqlData + "'" + str(listData[indx]) + "'"
+
+                        indx = indx + 1
                     else:
                         if isFirst:
                             isFirst = False
@@ -150,7 +160,7 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
                             sqlAdd = sqlAdd + ","
                             sqlData = sqlData + ","
                         sqlAdd = sqlAdd + currData[0]
-                        sqlData = sqlData + listData[indx]
+                        sqlData = sqlData + str(listData[indx])
 
                         indx = indx + 1
 
