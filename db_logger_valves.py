@@ -11,9 +11,7 @@ def open_file_2_save_valves():
     today = datetime.date.today()
     file2SaveDB = open(u"./data/db_logger_valves_raw"+ str(today.year) +"_"+ str(today.month) +".txt", "a")
 
-def valve_reg_ON(valveId, curDBLog):
-    global dbDefinitions
-
+def valve_reg_ON(valveId, curDBLog, dbDefinitions):
     if dbDefinitions[u"serverType"] == 'sqlLite':
         curDBLog.execute("INSERT INTO valves_raw (ValveRawFK, ValveRawON, ValveRawOFF) VALUES ("+ str(valveId) +", datetime('now','localtime'), datetime('now','localtime'))")
     elif dbDefinitions[u"serverType"] == 'fromFile':
@@ -21,8 +19,8 @@ def valve_reg_ON(valveId, curDBLog):
     elif dbDefinitions[u"serverType"] == 'mySQL':
         curDBLog.execute("INSERT INTO valves_raw (ValveRawFK, ValveRawON, ValveRawOFF) VALUES ("+ str(valveId) +", NOW(), NOW())")
 
-def valve_reg_OFF(valveId, curDBLog):
-    global dbDefinitions, file2SaveDB
+def valve_reg_OFF(valveId, curDBLog, dbDefinitions):
+    global file2SaveDB
 
     if dbDefinitions[u"serverType"] == 'fromFile':
         file2SaveDB.write(str(valveId) + ", " + str(datetime.datetime.now()) + ", OFF\n")
@@ -39,8 +37,8 @@ def valve_reg_OFF(valveId, curDBLog):
                     # Mysql
                     curDBLog.execute("UPDATE valves_raw SET ValveRawOFF = NOW() WHERE ValveRawId = "+ str(data[0]))
 
-def valve_reg_close_db(conDB):
-    global dbDefinitions, file2SaveDB
+def valve_reg_close_db(conDB, dbDefinitions):
+    global file2SaveDB
 
     if dbDefinitions[u"serverType"] == 'fromFile':
         file2SaveDB.close()

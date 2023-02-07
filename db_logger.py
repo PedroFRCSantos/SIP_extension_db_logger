@@ -84,7 +84,7 @@ def on_zone_change(name, **kw):
         curDBLog = None
 
         if dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
-            dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"])
+            dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
 
             if not dbIsOpen:
                 mutexDB.release()
@@ -96,11 +96,11 @@ def on_zone_change(name, **kw):
             if gv.srvals[i] != priorLogger[i]:  #  this station has changed
                 if gv.srvals[i]:  # station is on
                     # valve turn on add to LOG
-                    valve_reg_ON(i + 1, curDBLog)
+                    valve_reg_ON(i + 1, curDBLog, dbDefinitions)
                 else: # station is off
-                    valve_reg_OFF(i + 1, curDBLog)
+                    valve_reg_OFF(i + 1, curDBLog, dbDefinitions)
 
-        valve_reg_close_db(conDB)
+        valve_reg_close_db(conDB, dbDefinitions)
 
         mutexDB.release()
 
