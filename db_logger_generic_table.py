@@ -46,6 +46,54 @@ def create_generic_table(tableName, listElements, dbDefinitions):
 
     mutexDB.release()
 
+def change_table_name(tableOldName, tableNewName, dbDefinitions):
+    global mutexDB
+
+    mutexDB.acquire()
+
+    if dbDefinitions[u"serverType"] == 'fromFile':
+        if os.path.exists(u"./data/db_logger_sip_"+ tableOldName +".txt") and os.path.exists(u"./data/db_logger_sip_"+ tableOldName +"_structure.txt", 'w'):
+            os.rename(u"./data/db_logger_sip_"+ tableOldName +".txt", u"./data/db_logger_sip_"+ tableNewName +".txt")
+            os.rename(u"./data/db_logger_sip_"+ tableOldName +"_structure.txt", u"./data/db_logger_sip_"+ tableNewName +"_structure.txt")
+    elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
+        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
+        if dbIsOpen:
+            if dbDefinitions[u"serverType"] == 'mySQL':
+                sqlChange = "RENAME TABLE "+ tableOldName +" TO "+ tableNewName +";"
+            else:
+                sqlChange = "ALTER TABLE "+ tableOldName +" RENAME TO "+ tableNewName +";"
+            curDBLog.execute(sqlChange)
+
+    mutexDB.release()
+
+def check_if_table_exists(tableName, dbDefinitions):
+    global mutexDB
+
+    tableExits = False
+
+    mutexDB.acquire()
+
+    if dbDefinitions[u"serverType"] == 'fromFile':
+        tableExits = os.path.exists(u"./data/"+ tableName +".txt")
+    else:
+        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
+
+        if dbDefinitions[u"serverType"] == 'sqlLite':
+            sqlCheckTable = "SELECT count(*) as Total FROM information_schema.tables WHERE table_name = \'"+ tableName +"\' LIMIT 1"
+        elif dbDefinitions[u"serverType"] == 'mySQL':
+            sqlCheckTable = "SELECT count(*) as Total FROM sqlite_master WHERE type='table' AND name=\'"+ tableName +"\';"
+
+        curDBLog.execute(sqlCheckTable)
+        recordsRaw = curDBLog.fetchall()
+
+        for currData in recordsRaw:
+            if currData[0] == "1":
+                tableExits = True
+
+    mutexDB.release()
+
+    return tableExits
+
 def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
     global mutexDB
 
@@ -113,18 +161,30 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
         if dbIsOpen:
             # get table FK
             fkFieldName = ""
-            sqlStrutcture = "SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME "
-            sqlStrutcture = sqlStrutcture + "FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_NAME = '"+  tableName +"'"
+            if dbDefinitions[u"serverType"] == 'mySQL':
+                sqlStrutcture = "SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME "
+                sqlStrutcture = sqlStrutcture + "FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_NAME = '"+  tableName +"'"
 
-            curDBLog.execute(sqlStrutcture)
-            recordsFK = curDBLog.fetchall()
-            for recordFK in recordsFK:
-                if recordFK[3] == 'valves_id' and recordFK[4] == 'ValveId':
-                    fkFieldName = recordFK[1]
+                curDBLog.execute(sqlStrutcture)
+                recordsFK = curDBLog.fetchall()
+                for recordFK in recordsFK:
+                    if recordFK[3] == 'valves_id' and recordFK[4] == 'ValveId':
+                        fkFieldName = recordFK[1]
+            else:
+                sqlStrutcture = "PRAGMA foreign_key_list('" + tableName + "');"
+
+                curDBLog.execute(sqlStrutcture)
+                recordsFK = curDBLog.fetchall()
+                for recordFK in recordsFK:
+                    if recordFK[2] == 'valves_id' and recordFK[4] == 'ValveId':
+                        fkFieldName = recordFK[3]
 
             if (len(fkFieldName) > 0 and valveId > 0) or (len(fkFieldName) == 0 and valveId <= 0):
                 # get table structure
-                sqlStrutcture = "Describe " + tableName
+                if dbDefinitions[u"serverType"] == 'mySQL':
+                    sqlStrutcture = "Describe " + tableName
+                else:
+                    sqlStrutcture = "PRAGMA table_info('" + tableName + "');"
                 curDBLog.execute(sqlStrutcture)
                 recordsRaw = curDBLog.fetchall()
 
@@ -132,10 +192,14 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
                 sqlData = "VALUES ("
                 isFirst = True
                 indx = 0
+                indxFieldName = 1
+                if dbDefinitions[u"serverType"] == 'mySQL':
+                    indxFieldName = 0
                 for currData in recordsRaw:
-                    if currData[3] == 'PRI' and currData[5] == 'auto_increment':
+                    if (dbDefinitions[u"serverType"] == 'mySQL' and currData[3] == 'PRI' and currData[5] == 'auto_increment') or \
+                       (dbDefinitions[u"serverType"] == 'sqlLite' and currData[2] == 'integer' and currData[5] == '1'):
                         pass
-                    elif currData[0] == fkFieldName:
+                    elif currData[indxFieldName] == fkFieldName:
                         if isFirst:
                             isFirst = False
                         else:
@@ -143,13 +207,14 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
                             sqlData = sqlData + ","
                         sqlAdd = sqlAdd + fkFieldName
                         sqlData = sqlData + str(valveId)
-                    elif currData[1] == 'date' or currData[1] == 'datetime' or currData[1] == 'time' or currData[1].lower() == 'TEXT'.lower():
+                    elif (dbDefinitions[u"serverType"] == 'mySQL' and (currData[1] == 'date' or currData[1] == 'datetime' or currData[1] == 'time' or currData[1].lower() == 'TEXT'.lower())) or \
+                         (dbDefinitions[u"serverType"] == 'sqlLite' and (currData[1] == 'date' or currData[1] == 'datetime' or currData[1] == 'time' or currData[1].lower() == 'TEXT'.lower())):
                         if isFirst:
                             isFirst = False
                         else:
                             sqlAdd = sqlAdd + ","
                             sqlData = sqlData + ","
-                        sqlAdd = sqlAdd + currData[0]
+                        sqlAdd = sqlAdd + currData[indxFieldName]
                         sqlData = sqlData + "'" + str(listData[indx]) + "'"
 
                         indx = indx + 1
@@ -159,7 +224,7 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
                         else:
                             sqlAdd = sqlAdd + ","
                             sqlData = sqlData + ","
-                        sqlAdd = sqlAdd + currData[0]
+                        sqlAdd = sqlAdd + currData[indxFieldName]
                         sqlData = sqlData + str(listData[indx])
 
                         indx = indx + 1
@@ -172,4 +237,106 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
 
     mutexDB.release()
 
+def change_last_register(tableName, idxNumber, newValue, dbDefinitions):
+    global mutexDB
 
+    mutexDB.acquire()
+
+    if dbDefinitions[u"serverType"] == 'fromFile':
+        if os.path.exists(u"./data/db_logger_sip_"+ tableName +".txt"):
+            # find last file use to save data
+            today = datetime.date.today()
+            lastYearSave = today.year
+            lastMonthSave = today.month
+            numberOfDescrement = 240
+
+            while not os.path.exists(u"./data/db_logger_sip_"+ tableName + lastYearSave +"_"+ lastMonthSave +".txt") or numberOfDescrement > 0:
+                # Try last month if any register
+                lastMonthSave = lastMonthSave - 1
+                if lastMonthSave < 1:
+                    lastMonthSave = 12
+                    lastYearSave = lastYearSave - 1
+                numberOfDescrement = numberOfDescrement - 1
+
+            if os.path.exists(u"./data/db_logger_sip_"+ tableName + lastYearSave +"_"+ lastMonthSave +".txt"):
+                # Check when last line finish
+                fileAdd = open(u"./data/db_logger_sip_"+ tableName + lastYearSave +"_"+ lastMonthSave +".txt", 'r')
+                fileAdd.seek(-2, 2)
+                tmpString = fileAdd.readline()
+                lastSize = len(tmpString)
+
+                setLocIdx = -3
+                setLocDocIdx = -2
+                while True:
+                    fileAdd.seek(setLocIdx, 2)
+                    tmpString = fileAdd.readline()
+                    curretSize = len(tmpString)
+                    if curretSize < lastSize:
+                        break
+                    else:
+                        setLocDocIdx = setLocIdx
+                    setLocIdx = setLocIdx - 1
+
+                # Back space number o delete
+                fileAdd.seek(setLocDocIdx, 2)
+                orginalLine = fileAdd.readline()
+
+                fileAdd.truncate()
+
+                splitLine = orginalLine.split()
+                newLine = ""
+                idxPart = 0
+                isFirst = False
+                for partSplit in splitLine:
+                    if idxNumber != idxPart:
+                        newLine = newLine + partSplit
+                    else:
+                        newLine = newLine + newValue
+
+                    if isFirst:
+                        newLine = newLine + ","
+                    else:
+                        isFirst = True
+                    idxPart = idxPart + 1
+    elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
+        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
+        if dbIsOpen:
+            if dbDefinitions[u"serverType"] == 'mySQL':
+                sqlStrutcture = "DESCRIBE  "+  tableName +";"
+            else:
+                sqlStrutcture = "PRAGMA table_info('" + tableName + "');"
+
+            curDBLog.execute(sqlStrutcture)
+            recordsField = curDBLog.fetchall()
+            curentIdx = -1 # start in -1 discount primary key
+
+            fieldPKName = ""
+            fieldNameChange = ""
+
+            for i in range(len(recordsField)):
+                if i == idxNumber:
+                    if dbDefinitions[u"serverType"] == 'mySQL':
+                        fieldNameChange = recordsField[i][0]
+                    else:
+                        pass
+                    # Check type if need ""
+                    if (dbDefinitions[u"serverType"] == 'mySQL' and (recordsField[i][1] == 'date' or recordsField[i][1] == 'datetime' or recordsField[i][1] == 'time' or recordsField[i][1].lower() == 'TEXT'.lower())) or \
+                        (dbDefinitions[u"serverType"] == 'mySQL' and (recordsField[i]['type'] == 'date' or recordsField[i]['type'] == 'datetime' or recordsField[i]['type'] == 'time' or recordsField[i]['type'].lower() == 'TEXT'.lower())):  
+                        newValue = "'"+ newValue + "'"
+                elif curentIdx == -1:
+                    if dbDefinitions[u"serverType"] == 'mySQL':
+                        fieldPKName = recordsField[i][0]
+                    else:
+                        fieldPKName = recordsField[i][0]
+                curentIdx = curentIdx + 1
+
+            sqlIdLast = "SELECT MAX("+ fieldPKName +") as IdMax FROM "+ tableName
+            curDBLog.execute(sqlIdLast)
+            recordsField = curDBLog.fetchall()
+            if len(recordsField) > 0:
+                if len(recordsField[0]) > 0:
+                    sqlUpdate = "UPDATE "+ tableName + " SET " + fieldNameChange + " = " + newValue + " WHERE " + fieldPKName + " = " + str(recordsField[0][0])
+                    curDBLog.execute(sqlUpdate)
+                    conDB.commit()
+
+    mutexDB.release()
