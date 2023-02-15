@@ -7,12 +7,11 @@ def create_generic_table(tableName, listElements, dbDefinitions):
     mutexDB.acquire()
 
     if dbDefinitions[u"serverType"] == 'fromFile':
-        if os.path.exists(u"./data/db_logger_sip_"+ tableName +".txt"):
-            # write struture
-            fileNewDB = open(u"./data/db_logger_sip_"+ tableName +"_structure.txt", 'w')
-            for key in listElements:
-                fileNewDB.write(key +"->" + listElements[key]  + "\n")
-            fileNewDB.close()
+        # write struture
+        fileNewDB = open(u"./data/db_logger_sip_"+ tableName +"_structure.txt", 'w')
+        for key in listElements:
+            fileNewDB.write(key +"->" + listElements[key]  + "\n")
+        fileNewDB.close()
     elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
         dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
         if dbIsOpen:
@@ -78,17 +77,18 @@ def check_if_table_exists(tableName, dbDefinitions):
     else:
         dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
 
-        if dbDefinitions[u"serverType"] == 'sqlLite':
-            sqlCheckTable = "SELECT count(*) as Total FROM information_schema.tables WHERE table_name = \'"+ tableName +"\' LIMIT 1"
-        elif dbDefinitions[u"serverType"] == 'mySQL':
-            sqlCheckTable = "SELECT count(*) as Total FROM sqlite_master WHERE type='table' AND name=\'"+ tableName +"\';"
+        if dbIsOpen:
+            if dbDefinitions[u"serverType"] == 'sqlLite':
+                sqlCheckTable = "SELECT count(*) as Total FROM information_schema.tables WHERE table_name = \'"+ tableName +"\' LIMIT 1"
+            elif dbDefinitions[u"serverType"] == 'mySQL':
+                sqlCheckTable = "SELECT count(*) as Total FROM sqlite_master WHERE type='table' AND name=\'"+ tableName +"\';"
 
-        curDBLog.execute(sqlCheckTable)
-        recordsRaw = curDBLog.fetchall()
+            curDBLog.execute(sqlCheckTable)
+            recordsRaw = curDBLog.fetchall()
 
-        for currData in recordsRaw:
-            if currData[0] == "1":
-                tableExits = True
+            for currData in recordsRaw:
+                if currData[0] == "1":
+                    tableExits = True
 
     mutexDB.release()
 
@@ -100,7 +100,7 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
     mutexDB.acquire()
 
     if dbDefinitions[u"serverType"] == 'fromFile':
-        if os.path.exists(u"./data/db_logger_sip_"+ tableName +".txt"):
+        if os.path.exists(u"./data/db_logger_sip_"+ tableName +"_structure.txt"):
             # read struture
             fileStrture = open(u"./data/db_logger_sip_"+ tableName +"_structure.txt", 'r')
             Lines = fileStrture.readlines()
@@ -109,6 +109,8 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
             indxDateTime = -1
             for line in Lines:
                 splitData = line.split("->")
+
+                splitData[1] = splitData[1].replace("\n", "").replace("\r", "")
 
                 if splitData[1] == 'date' or splitData[1] == 'datetime':
                     if splitData[1] == 'date':
@@ -128,29 +130,17 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
 
                 indx = indx + 1
 
-            # write register to DB
+            # write register to DB in the end
             today = datetime.date.today()
-            fileAdd = open(u"./data/db_logger_sip_"+ tableName +str(today.year) +"_"+ str(today.month) +".txt", 'r')
+            fileAdd = open(u"./data/db_logger_sip_"+ tableName +str(today.year) +"_"+ str(today.month) +".txt", 'a')
 
             fileAdd.write('#BEGIN\n')
             indx = 0
 
             for currData in listData:
                 # other type of data
-                if indx > 0:
-                    fileAdd.write("###\n")
-                    fileAdd.write(str(currData) +"\n")
-
-                # if need to add time
-                if (indxDate == 0 or indxDate == indx + 1) and (indxDateTime == 0 or indxDateTime == indx + 1):
-                    indx = indx + 1
-                    today = datetime.now()
-                    if indxDate == 0 or indxDate == indx + 1:
-                        fileAdd.write(str(today.year) + str(today.month) + str(today.day)+"\n")
-                    else:
-                        fileAdd.write(today.strftime("%d/%m/%Y %H:%M:%S") +"\n")
-                    if indx > 0:
-                        fileAdd.write("###\n")
+                fileAdd.write("###\n")
+                fileAdd.write(str(currData) +"\n")
 
                 indx = indx + 1
             fileAdd.write('#END\n')
@@ -243,14 +233,14 @@ def change_last_register(tableName, idxNumber, newValue, dbDefinitions):
     mutexDB.acquire()
 
     if dbDefinitions[u"serverType"] == 'fromFile':
-        if os.path.exists(u"./data/db_logger_sip_"+ tableName +".txt"):
+        if os.path.exists(u"./data/db_logger_sip_"+ tableName +"_structure.txt"):
             # find last file use to save data
             today = datetime.date.today()
             lastYearSave = today.year
             lastMonthSave = today.month
             numberOfDescrement = 240
 
-            while not os.path.exists(u"./data/db_logger_sip_"+ tableName + lastYearSave +"_"+ lastMonthSave +".txt") or numberOfDescrement > 0:
+            while not os.path.exists(u"./data/db_logger_sip_"+ str(tableName) + str(lastYearSave) +"_"+ str(lastMonthSave) +".txt") and numberOfDescrement > 0:
                 # Try last month if any register
                 lastMonthSave = lastMonthSave - 1
                 if lastMonthSave < 1:
@@ -258,46 +248,63 @@ def change_last_register(tableName, idxNumber, newValue, dbDefinitions):
                     lastYearSave = lastYearSave - 1
                 numberOfDescrement = numberOfDescrement - 1
 
-            if os.path.exists(u"./data/db_logger_sip_"+ tableName + lastYearSave +"_"+ lastMonthSave +".txt"):
+            if os.path.exists(u"./data/db_logger_sip_"+ str(tableName) + str(lastYearSave) +"_"+ str(lastMonthSave) +".txt"):
                 # Check when last line finish
-                fileAdd = open(u"./data/db_logger_sip_"+ tableName + lastYearSave +"_"+ lastMonthSave +".txt", 'r')
-                fileAdd.seek(-2, 2)
-                tmpString = fileAdd.readline()
-                lastSize = len(tmpString)
+                fileAdd = open(u"./data/db_logger_sip_"+ str(tableName) + str(lastYearSave) +"_"+ str(lastMonthSave) +".txt", 'rb+')
 
-                setLocIdx = -3
-                setLocDocIdx = -2
+                setLocIdx = -2 - len("#END") -2
                 while True:
                     fileAdd.seek(setLocIdx, 2)
                     tmpString = fileAdd.readline()
                     curretSize = len(tmpString)
-                    if curretSize < lastSize:
+                    if curretSize >= len("#BEGIN") and tmpString[:len("#BEGIN")].decode("utf-8") == "#BEGIN":
                         break
-                    else:
-                        setLocDocIdx = setLocIdx
                     setLocIdx = setLocIdx - 1
 
+                fileAdd.seek(setLocIdx, 2)
+
+                listOfItemsRegister = []
+                currentItem = ""
+                isOpen = True
+
+                while True:
+                    tmpString = fileAdd.readline()
+                    if len(tmpString.decode("utf-8")) == 0:
+                        break
+                    elif tmpString[:len("###")].decode("utf-8") == "###" and isOpen:
+                        currentItem = ""
+                        isOpen = False
+                    elif (tmpString[:len("###")].decode("utf-8") == "###" and not isOpen) or tmpString[:len("#END")].decode("utf-8") == "#END":
+                        for i in range(2):
+                            if len(currentItem) > 0 and (currentItem[len(currentItem) - 1] == '\n' or currentItem[len(currentItem) - 1] == '\r'):
+                                currentItem = currentItem[:len(currentItem) - 1]
+                        listOfItemsRegister.append(currentItem)
+                        isOpen = True
+                    else:
+                        currentItem = currentItem + tmpString.decode("utf-8")
+
                 # Back space number o delete
-                fileAdd.seek(setLocDocIdx, 2)
-                orginalLine = fileAdd.readline()
-
+                fileAdd.seek(setLocIdx, 2)
                 fileAdd.truncate()
+                fileAdd.close()
 
-                splitLine = orginalLine.split()
-                newLine = ""
-                idxPart = 0
-                isFirst = False
-                for partSplit in splitLine:
-                    if idxNumber != idxPart:
-                        newLine = newLine + partSplit
-                    else:
-                        newLine = newLine + newValue
+                # Update last register in the file
+                if idxNumber - 1 < len(listOfItemsRegister):
+                    listOfItemsRegister[idxNumber - 1] = newValue
 
-                    if isFirst:
-                        newLine = newLine + ","
-                    else:
-                        isFirst = True
-                    idxPart = idxPart + 1
+                    fileAdd = open(u"./data/db_logger_sip_"+ str(tableName) + str(lastYearSave) +"_"+ str(lastMonthSave) +".txt", 'a')
+
+                    fileAdd.write('#BEGIN\n')
+
+                    for currData in listOfItemsRegister:
+                        # other type of data
+                        fileAdd.write("###\n")
+                        fileAdd.write(str(currData) +"\n")
+                    fileAdd.write('#END\n')
+
+                    fileAdd.close()
+
+                # open in the end of file and write change value
     elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
         dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
         if dbIsOpen:
