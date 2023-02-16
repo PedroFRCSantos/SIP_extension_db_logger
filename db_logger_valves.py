@@ -60,10 +60,8 @@ def get_list_of_files_valves_raw(dbDefinitions):
 
     return res
 
-def get_list_of_valves():
+def get_list_of_valves(dbDefinitions):
     global mutexDB
-
-    dbDefinitions = gv.dbDefinitions
 
     listValves = []
 
@@ -112,17 +110,15 @@ def estimate_valves_turnon_in_month():
 
     return statsMonthOut
 
-def estimate_valve_turnon_by_month(valveId, yearMin, monthMin, yearMax, monthMax):
+def estimate_valve_turnon_by_month(valveId, yearMin, monthMin, yearMax, monthMax, dbDefinitions):
     global mutexDB
-
-    dbDefinitions = gv.dbDefinitions
 
     statsMonthOut = {}
 
     mutexDB.acquire()
 
     if dbDefinitions[u"serverType"] == 'fromFile':
-        listOfFiles = get_list_of_files_valves_raw()
+        listOfFiles = get_list_of_files_valves_raw(dbDefinitions)
         dirPath = u"./data/"
 
         auxValveOn = {}
@@ -180,12 +176,10 @@ def estimate_valve_turnon_by_month(valveId, yearMin, monthMin, yearMax, monthMax
 
     return statsMonthOut
 
-def estimate_valve_turnon_by_day(valveId, yearMin, monthMin, dayMin, yearMax, monthMax, dayMax):
+def estimate_valve_turnon_by_day(valveId, yearMin, monthMin, dayMin, yearMax, monthMax, dayMax, dbDefinitions):
     global mutexDB
 
     statsPeriod = {}
-
-    dbDefinitions = gv.dbDefinitions
 
     minDate = datetime.datetime(yearMin, monthMin, dayMin)
     maxDate = datetime.datetime(yearMax, monthMax, dayMax)
@@ -193,7 +187,7 @@ def estimate_valve_turnon_by_day(valveId, yearMin, monthMin, dayMin, yearMax, mo
     mutexDB.acquire()
 
     if dbDefinitions[u"serverType"] == 'fromFile':
-        listOfFiles = get_list_of_files_valves_raw()
+        listOfFiles = get_list_of_files_valves_raw(dbDefinitions)
         dirPath = u"./data/"
 
         auxValveOn = {}
@@ -290,7 +284,7 @@ def get_reg_valves(numberOfReg, dbDefinitions):
             indexRecord = int(record2Change[2])
             record2Change[2] = gv.snames[indexRecord - 1]
     elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
-        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"])
+        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
         if dbIsOpen:
             curDBLog.execute("SELECT ValveRawON, ValveRawOFF, ValveIdName FROM valves_raw, valves_id WHERE ValveId = ValveRawFK ORDER BY ValveRawON DESC LIMIT "+str(numberOfReg))
             recordsRaw = curDBLog.fetchall()
@@ -328,7 +322,7 @@ def add_new_table_related_to_valve(tableName, elementsName):
 
         fileLog.close()
     elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
-        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"])
+        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
         if dbIsOpen:
             queryCreateTable = "CREATE TABLE IF NOT EXISTS table_name" + str(tableName) + "("
 

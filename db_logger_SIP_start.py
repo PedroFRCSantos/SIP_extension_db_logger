@@ -1,11 +1,7 @@
 from db_logger_core import *
 
-import gv  # Get access to SIP's settings, gv = global variables
-
-def estimate_number_of_turn_on_by_month():
+def estimate_number_of_turn_on_by_month(dbDefinitions):
     global mutexDB
-
-    dbDefinitions = gv.dbDefinitions
 
     statsMonthOut = {}
 
@@ -49,8 +45,6 @@ def estimate_number_of_turn_on_by_month():
     return statsMonthOut
 
 def get_list_SIP_reg(numberOfReg, dbDefinitions):
-    dbDefinitions = gv.dbDefinitions
-
     records = []
 
     if dbDefinitions[u"serverType"] == 'fromFile':
@@ -81,4 +75,4 @@ def get_list_SIP_reg(numberOfReg, dbDefinitions):
                     # mySQL
                     records.append(str(currData[0].year)+"/"+str(currData[0].month)+"/"+str(currData[0].day)+" "+str(currData[0].hour)+":"+str(currData[0].minute)+":"+str(currData[0].second))
 
-    return numberOfReg
+    return records

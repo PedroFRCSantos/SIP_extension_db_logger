@@ -137,9 +137,7 @@ class turn_on_display(ProtectedPage):
                 pass
 
         mutexDB.acquire()
-
         records = get_list_SIP_reg(numberOfReg, dbDefinitions)
-
         mutexDB.release()
 
         return template_render.db_logger_turn_on(records, numberOfReg)

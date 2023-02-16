@@ -15,6 +15,7 @@ from threading import Thread, Lock
 import datetime
 import calendar
 import json
+import os
 
 import gv  # Get access to SIP's settings, gv = global variables
 
@@ -80,7 +81,7 @@ def initiate_DB_if_not_exists(dbDefinitions):
     if dbDefinitions[u"serverType"] != 'none':
         dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
 
-        if not dbIsOpen:
+        if not dbIsOpen:  
             return
 
         if dbDefinitions[u"serverType"] == 'sqlLite':
@@ -114,6 +115,38 @@ def initiate_DB_if_not_exists(dbDefinitions):
 
         # if not exist create table to save turn on SIP
         if dbDefinitions[u"saveSIPStart"] == 1:
+            # check if alredy register, multi import from library cloud couse same cals
+            if dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
+                if dbDefinitions[u"serverType"] == 'sqlLite':
+                    curDBLog.execute("SELECT count(*) as Total FROM sip_start WHERE (JULIANDAY(datetime(\'now\',\'localtime\')) - JULIANDAY(SIPStartTime)) * 86400 < 2;")
+                else:
+                    curDBLog.execute("SELECT count(*) as Total FROM sip_start WHERE TIME_TO_SEC(TIMEDIFF(NOW(), SIPStartTime)) < 2;")
+
+                recordsRaw = curDBLog.fetchall()
+                if recordsRaw[0][0] >= 1:
+                    return
+            elif os.path.exists(u"./data/db_logger_sip_turn_on.txt"):
+                fileOpen = open(u"./data/db_logger_sip_turn_on.txt", "rb+")
+
+                seekIndex = -len("XXXX-XX-XX XX:XX:XX.XXXXXX")
+                fileOpen.seek(seekIndex, 2)
+
+                for i in range(len("XXXX-XX-XX XX:XX:XX.XXXXXX")):
+                    tmpLine = fileOpen.readline()
+                    tmpLine = tmpLine.decode("utf-8")
+
+                    if len(tmpLine) > len("XXXX-XX-XX XX:XX:XX.XXXXXX") and tmpLine[4] == '-' and tmpLine[7] == '-':
+                        break
+                    seekIndex = seekIndex - 1
+                    fileOpen.seek(seekIndex, 2)
+
+                fileOpen.close()
+
+                dateTimeLastReg = datetime.datetime.strptime(tmpLine[:len("XXXX-XX-XX XX:XX:XX.XXXXXX")], '%Y-%m-%d %H:%M:%S.%f')
+                diffTime = (datetime.datetime.now() - dateTimeLastReg).total_seconds()
+                if diffTime < 2.0:
+                    return
+
             if dbDefinitions[u"serverType"] == 'sqlLite':
                 curDBLog.execute("CREATE TABLE IF NOT EXISTS sip_start (SIPStartId integer primary key, SIPStartTime datetime default current_timestamp)")
                 curDBLog.execute("INSERT INTO sip_start (SIPStartTime) VALUES (datetime('now','localtime'))")
