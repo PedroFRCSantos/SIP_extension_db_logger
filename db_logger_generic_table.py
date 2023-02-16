@@ -37,7 +37,9 @@ def create_generic_table(tableName, listElements, dbDefinitions):
                     else:
                         sqlCreate = sqlCreate + ", " + key +" "+ listElements[key] +" NOT NULL DEFAULT NOW()"
 
-            sqlCreate = sqlCreate + ", PRIMARY KEY("+ tableName +"Id)"
+            if dbDefinitions[u"serverType"] == 'mySQL':
+                sqlCreate = sqlCreate + ", PRIMARY KEY("+ tableName +"Id)"
+
             if valveFK:
                 sqlCreate = sqlCreate + ", FOREIGN KEY ("+ valveFKName +") REFERENCES valves_id(ValveId)"
             sqlCreate = sqlCreate + ");"
@@ -187,7 +189,7 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
                     indxFieldName = 0
                 for currData in recordsRaw:
                     if (dbDefinitions[u"serverType"] == 'mySQL' and currData[3] == 'PRI' and currData[5] == 'auto_increment') or \
-                       (dbDefinitions[u"serverType"] == 'sqlLite' and currData[2] == 'integer' and currData[5] == '1'):
+                       (dbDefinitions[u"serverType"] == 'sqlLite' and currData[2].lower() == 'integer' and currData[5] == 1):
                         pass
                     elif currData[indxFieldName] == fkFieldName:
                         if isFirst:
@@ -198,7 +200,7 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
                         sqlAdd = sqlAdd + fkFieldName
                         sqlData = sqlData + str(valveId)
                     elif (dbDefinitions[u"serverType"] == 'mySQL' and (currData[1] == 'date' or currData[1] == 'datetime' or currData[1] == 'time' or currData[1].lower() == 'TEXT'.lower())) or \
-                         (dbDefinitions[u"serverType"] == 'sqlLite' and (currData[1] == 'date' or currData[1] == 'datetime' or currData[1] == 'time' or currData[1].lower() == 'TEXT'.lower())):
+                         (dbDefinitions[u"serverType"] == 'sqlLite' and (currData[2] == 'date' or currData[2] == 'datetime' or currData[2] == 'time' or currData[2].lower() == 'TEXT'.lower())):
                         if isFirst:
                             isFirst = False
                         else:
@@ -325,16 +327,16 @@ def change_last_register(tableName, idxNumber, newValue, dbDefinitions):
                     if dbDefinitions[u"serverType"] == 'mySQL':
                         fieldNameChange = recordsField[i][0]
                     else:
-                        pass
+                        fieldNameChange = recordsField[i][1]
                     # Check type if need ""
                     if (dbDefinitions[u"serverType"] == 'mySQL' and (recordsField[i][1] == 'date' or recordsField[i][1] == 'datetime' or recordsField[i][1] == 'time' or recordsField[i][1].lower() == 'TEXT'.lower())) or \
-                        (dbDefinitions[u"serverType"] == 'mySQL' and (recordsField[i]['type'] == 'date' or recordsField[i]['type'] == 'datetime' or recordsField[i]['type'] == 'time' or recordsField[i]['type'].lower() == 'TEXT'.lower())):  
+                        (dbDefinitions[u"serverType"] == 'sqlLite' and (recordsField[i][2] == 'date' or recordsField[i][2] == 'datetime' or recordsField[i][2] == 'time' or recordsField[i][2].lower() == 'TEXT'.lower())):
                         newValue = "'"+ newValue + "'"
                 elif curentIdx == -1:
                     if dbDefinitions[u"serverType"] == 'mySQL':
                         fieldPKName = recordsField[i][0]
                     else:
-                        fieldPKName = recordsField[i][0]
+                        fieldPKName = recordsField[i][1]
                 curentIdx = curentIdx + 1
 
             sqlIdLast = "SELECT MAX("+ fieldPKName +") as IdMax FROM "+ tableName
