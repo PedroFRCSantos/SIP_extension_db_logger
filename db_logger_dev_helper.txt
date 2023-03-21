@@ -1,0 +1,73 @@
+# MySQL
+-- General definition flow
+CREATE TABLE flow_devices
+(
+	FlowDevicesId int NOT NULL AUTO_INCREMENT,
+	FlowDevicesRef varchar(50) NOT NULL,
+	FlowDevicesCorrFactor float NOT NULL,
+	FlowDevicesPortSensor int NOT NULL,
+	FlowDevicesIsSlowPulse boolean NOT NULL,
+	
+	PRIMARY KEY (FlowDevicesId)
+);
+
+-- Ajust to flow
+CREATE TABLE flow_correction
+(
+	FlowCorrectionId int NOT NULL AUTO_INCREMENT,
+	FlowCorrectionDevicesFK int NOT NULL,
+	FlowCorrectionDateTime datetime NOT NULL DEFAULT NOW(),
+	FlowCorrectionRealReading double NOT NULL,
+	FlowCorrectionDiffLitters double NOT NULL,
+	
+	PRIMARY KEY (FlowCorrectionId),
+	FOREIGN KEY (FlowCorrectionDevicesFK) REFERENCES flow_devices(FlowDevicesId)
+);
+
+-- Flow reading
+CREATE TABLE flow_reading
+(
+	FlowReadingId int NOT NULL AUTO_INCREMENT,
+	FlowReadingFK int NOT NULL,
+	FlowReadingRate double NOT NULL,
+	FlowReadingAccum double NOT NULL,
+	FlowReadingDate datetime NOT NULL DEFAULT NOW(),
+	
+	PRIMARY KEY (FlowReadingId),
+	FOREIGN KEY (FlowReadingFK) REFERENCES flow_devices(FlowDevicesId)
+);
+
+# SQLite
+-- General definition flow
+CREATE TABLE flow_devices
+(
+	FlowDevicesId integer primary key,
+	FlowDevicesRef varchar(50) NOT NULL,
+	FlowDevicesCorrFactor float NOT NULL,
+	FlowDevicesPortSensor int NOT NULL,
+	FlowDevicesIsSlowPulse boolean NOT NULL
+);
+
+-- Ajust to flow
+CREATE TABLE flow_correction
+(
+	FlowCorrectionId integer primary key,
+	FlowCorrectionDevicesFK integer NOT NULL,
+	FlowCorrectionDateTime datetime default current_timestamp,
+	FlowCorrectionRealReading double NOT NULL,
+	FlowCorrectionDiffLitters double NOT NULL,
+
+	FOREIGN KEY (FlowCorrectionDevicesFK) REFERENCES flow_devices(FlowDevicesId)
+);
+
+-- Flow reading
+CREATE TABLE flow_reading
+(
+	FlowReadingId integer primary key,
+	FlowReadingFK integer NOT NULL,
+	FlowReadingRate double NOT NULL,
+	FlowReadingAccum double NOT NULL,
+	FlowReadingDate datetime default current_timestamp,
+
+	FOREIGN KEY (FlowReadingFK) REFERENCES flow_devices(FlowDevicesId)
+);

@@ -9,11 +9,14 @@ Requirements:
 ##### List all plugin files below preceded by a blank line [file_name.ext path] relative to SIP directory #####
 
 db_logger.py plugins
-db_logger_aux.py plugins
+db_logger_aux_fun.py plugins
 db_logger_core.py plugins
+db_logger_flow.py plugins
+db_logger_generic_table.py plugins
 db_logger_SIP_start.py plugins
-db_logger.html templates
+db_logger_valves.py plugins
 db_logger_turn_on.html templates
 db_logger_valve_status.html templates
+db_logger.html templates
 db_logger.json data (generated)
 db_logger.manifest plugins/manifests

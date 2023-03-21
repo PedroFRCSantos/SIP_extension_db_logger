@@ -6,24 +6,36 @@ import gv  # Get access to SIP's settings, gv = global variables
 import os
 
 def open_file_2_save_valves():
-    global file2SaveDB
+    global file2SaveDBLogValves, mutexDB
+
+    mutexDB.acquire()
 
     today = datetime.date.today()
-    file2SaveDB = open(u"./data/db_logger_valves_raw"+ str(today.year) +"_"+ str(today.month) +".txt", "a")
+    file2SaveDBLogValves = open(u"./data/db_logger_valves_raw"+ str(today.year) +"_"+ str(today.month) +".txt", "a")
+
+    mutexDB.release()
 
 def valve_reg_ON(valveId, curDBLog, dbDefinitions):
+    global mutexDB, file2SaveDBLogValves
+
+    mutexDB.acquire()
+
     if dbDefinitions[u"serverType"] == 'sqlLite':
         curDBLog.execute("INSERT INTO valves_raw (ValveRawFK, ValveRawON, ValveRawOFF) VALUES ("+ str(valveId) +", datetime('now','localtime'), datetime('now','localtime'))")
     elif dbDefinitions[u"serverType"] == 'fromFile':
-        file2SaveDB.write(str(valveId) + ", " + str(datetime.datetime.now()) + ", ON\n")
+        file2SaveDBLogValves.write(str(valveId) + ", " + str(datetime.datetime.now()) + ", ON\n")
     elif dbDefinitions[u"serverType"] == 'mySQL':
         curDBLog.execute("INSERT INTO valves_raw (ValveRawFK, ValveRawON, ValveRawOFF) VALUES ("+ str(valveId) +", NOW(), NOW())")
 
+    mutexDB.release()
+
 def valve_reg_OFF(valveId, curDBLog, dbDefinitions):
-    global file2SaveDB
+    global file2SaveDBLogValves, mutexDB
+
+    mutexDB.acquire()
 
     if dbDefinitions[u"serverType"] == 'fromFile':
-        file2SaveDB.write(str(valveId) + ", " + str(datetime.datetime.now()) + ", OFF\n")
+        file2SaveDBLogValves.write(str(valveId) + ", " + str(datetime.datetime.now()) + ", OFF\n")
     elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
         # start to check if any on to complete with of
         curDBLog.execute("SELECT * FROM valves_raw WHERE ValveRawON = ValveRawOFF AND ValveRawFK = "+ str(valveId) +" ORDER BY ValveRawId DESC")
@@ -37,16 +49,25 @@ def valve_reg_OFF(valveId, curDBLog, dbDefinitions):
                     # Mysql
                     curDBLog.execute("UPDATE valves_raw SET ValveRawOFF = NOW() WHERE ValveRawId = "+ str(data[0]))
 
+    mutexDB.release()
+
 def valve_reg_close_db(conDB, dbDefinitions):
-    global file2SaveDB
+    global file2SaveDB, mutexDB
+
+    mutexDB.acquire()
 
     if dbDefinitions[u"serverType"] == 'fromFile':
-        file2SaveDB.close()
+        file2SaveDBLogValves.close()
     elif dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
         conDB.commit()
 
+    mutexDB.release()
+
 def get_list_of_files_valves_raw(dbDefinitions):
+    global mutexDB
     res = []
+
+    mutexDB.acquire()
 
     if dbDefinitions[u"serverType"] == 'fromFile':
         dirPath = u"./data/"
@@ -57,6 +78,8 @@ def get_list_of_files_valves_raw(dbDefinitions):
                     res.append(path)
 
         res = sorted(res, reverse=False)
+
+    mutexDB.release()
 
     return res
 
@@ -240,7 +263,11 @@ def estimate_valve_turnon_by_day(valveId, yearMin, monthMin, dayMin, yearMax, mo
     return statsPeriod
 
 def get_reg_valves(numberOfReg, dbDefinitions):
+    global mutexDB
+
     records = []
+
+    mutexDB.acquire()
 
     if dbDefinitions[u"serverType"] == 'fromFile':
         dirPath = u"./data/"
@@ -302,6 +329,8 @@ def get_reg_valves(numberOfReg, dbDefinitions):
 
                 newRow.append(estimate_compose_dif_date_time(d1, d2))
                 records.append(newRow)
+
+    mutexDB.release()
 
     return records
 
