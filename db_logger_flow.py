@@ -34,6 +34,32 @@ def init_db_if_needed(dbDefinitions, flowDefinition):
 
     mutexDB.release()
 
+def check_and_add_flow(dbDefinitions, flowRef : str, port : int, correctionFActor : float, slowPulse : bool):
+    global mutexDB
+
+    mutexDB.acquire()
+
+    if not dbDefinitions[u"serverType"] == 'fromFile':
+        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
+
+        idFlowDevice = 0
+        sqlGet = "SELECT FlowDevicesId FROM flow_devices WHERE FlowDevicesRef = '"+ flowRef +"';"
+        curDBLog.execute(sqlGet)
+        for currData in curDBLog:
+            if len(currData) == 1:
+                try:
+                    idFlowDevice = int(currData[0])
+                except:
+                    pass
+
+        if idFlowDevice == 0:
+            sqlAdd = "INSERT INTO flow_devices (FlowDevicesRef, FlowDevicesCorrFactor, FlowDevicesPortSensor, FlowDevicesIsSlowPulse) "
+            sqlAdd = sqlAdd +"VALUES ('"+ flowRef +"', "+ str(correctionFActor) +", "+ str(port) +", "+ str(slowPulse) +");"
+            curDBLog.execute(sqlAdd)
+            conDB.commit()
+
+    mutexDB.release()
+
 def add_new_register(dbDefinitions, flowRef : str, flowRate : float, flowAccum : float, dateTimeReg : datetime.date):
     global mutexDB
 
@@ -60,7 +86,7 @@ def add_new_register(dbDefinitions, flowRef : str, flowRate : float, flowAccum :
         
         if idFlowDevice > 0:
             sqlAdd = "INSERT INTO flow_reading (FlowReadingFK, FlowReadingRate, FlowReadingAccum, FlowReadingDate) "
-            sqlAdd = sqlAdd + "VALUES ("+ str(idFlowDevice) +", "+ str(flowRate) +", "+ str(flowAccum) +", "+ dateTimeReg.strftime("%Y-%m-%d, %H:%M:%S") +");"
+            sqlAdd = sqlAdd + "VALUES ("+ str(idFlowDevice) +", "+ str(flowRate) +", "+ str(flowAccum) +", '"+ dateTimeReg.strftime("%Y-%m-%d %H:%M:%S") +"');"
             curDBLog.execute(sqlAdd)
             conDB.commit()
 
@@ -107,7 +133,7 @@ def get_last_accum_value(dbDefinitions, flowDefinition):
                 dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
                 connect2DB = True
             if dbIsOpen:
-                sqlGet = "SELECT FlowRegisterRate, FlowRegisterAccum FROM flow_reading WHERE FlowDevicesRef = '"+ flowDefinition["FlowRef"][i] +"' AND FlowReadingDate ="
+                sqlGet = "SELECT FlowReadingRate, FlowReadingAccum FROM flow_reading, flow_devices WHERE FlowReadingFK = FlowDevicesId AND FlowDevicesRef = '"+ flowDefinition["FlowRef"][i] +"' AND FlowReadingDate ="
                 sqlGet = sqlGet + "(SELECT MAX(FlowReadingDate) FROM flow_reading, flow_devices WHERE FlowReadingFK = FlowDevicesId AND FlowDevicesRef = '"+ flowDefinition["FlowRef"][i] +"');"
                 curDBLog.execute(sqlGet)
                 for currData in curDBLog:
