@@ -1,6 +1,6 @@
 # MySQL
 -- General definition flow
-CREATE TABLE flow_devices
+CREATE TABLE IF NOT EXISTS flow_devices
 (
 	FlowDevicesId int NOT NULL AUTO_INCREMENT,
 	FlowDevicesRef varchar(50) NOT NULL,
@@ -12,7 +12,7 @@ CREATE TABLE flow_devices
 );
 
 -- Ajust to flow
-CREATE TABLE flow_correction
+CREATE TABLE IF NOT EXISTS flow_correction
 (
 	FlowCorrectionId int NOT NULL AUTO_INCREMENT,
 	FlowCorrectionDevicesFK int NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE flow_correction
 );
 
 -- Flow reading
-CREATE TABLE flow_reading
+CREATE TABLE IF NOT EXISTS flow_reading
 (
 	FlowReadingId int NOT NULL AUTO_INCREMENT,
 	FlowReadingFK int NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE flow_reading
 
 # SQLite
 -- General definition flow
-CREATE TABLE flow_devices
+CREATE TABLE IF NOT EXISTS flow_devices
 (
 	FlowDevicesId integer primary key,
 	FlowDevicesRef varchar(50) NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE flow_devices
 );
 
 -- Ajust to flow
-CREATE TABLE flow_correction
+CREATE TABLE IF NOT EXISTS flow_correction
 (
 	FlowCorrectionId integer primary key,
 	FlowCorrectionDevicesFK integer NOT NULL,
@@ -61,7 +61,7 @@ CREATE TABLE flow_correction
 );
 
 -- Flow reading
-CREATE TABLE flow_reading
+CREATE TABLE IF NOT EXISTS flow_reading
 (
 	FlowReadingId integer primary key,
 	FlowReadingFK integer NOT NULL,

@@ -1,0 +1,155 @@
+# MySql
+-- Table with name of off-grid
+CREATE TABLE IF NOT EXISTS off_grid_name
+(
+	OffGridNameId int NOT NULL AUTO_INCREMENT,
+	OffGridNameVal varchar(50) NOT NULL,
+	
+	PRIMARY KEY (OffGridNameId)
+);
+
+-- Table with reading
+CREATE TABLE IF NOT EXISTS off_grid_reading
+(
+	OffGridReadingId int NOT NULL AUTO_INCREMENT,
+	OffGridReadingFK int NOT NULL,
+	OffGridReadingDate datetime NOT NULL DEFAULT NOW(),
+	
+	PRIMARY KEY (OffGridReadingId),
+	FOREIGN KEY (OffGridReadingFK) REFERENCES off_grid_name(OffGridNameId)
+);
+
+-- Table with Solar reading
+CREATE TABLE IF NOT EXISTS off_grid_read_solar
+(
+	OffGridReadSolarId int NOT NULL AUTO_INCREMENT,
+	OffGridReadSolarFK int NOT NULL,
+	OffGridReadSolarN int NOT NULL,
+	OffGridReadSolarV double NOT NULL,
+	OffGridReadSolarA double NOT NULL,
+	OffGridReadSolarE double NOT NULL,
+	
+	PRIMARY KEY (OffGridReadSolarId),
+	FOREIGN KEY (OffGridReadSolarFK) REFERENCES off_grid_reading(OffGridReadingId)
+);
+
+-- Table with Wind reading
+CREATE TABLE IF NOT EXISTS off_grid_read_wind
+(
+	OffGridReadWindId int NOT NULL AUTO_INCREMENT,
+	OffGridReadWindFK int NOT NULL,
+	OffGridReadWindN int NOT NULL,
+	OffGridReadWindV double NOT NULL,
+	OffGridReadWindA double NOT NULL,
+	OffGridReadWindE double NOT NULL,
+	
+	PRIMARY KEY (OffGridReadWindId),
+	FOREIGN KEY (OffGridReadWindFK) REFERENCES off_grid_reading(OffGridReadingId)
+);
+
+-- Table with Total generation reading
+CREATE TABLE IF NOT EXISTS off_grid_read_total_gen
+(
+	OffGridReadTGenId int NOT NULL AUTO_INCREMENT,
+	OffGridReadTGenFK int NOT NULL,
+	OffGridReadTGenN int NOT NULL,
+	OffGridReadTGenV double NOT NULL,
+	OffGridReadTGenA double NOT NULL,
+	OffGridReadTGenE double NOT NULL,
+	
+	PRIMARY KEY (OffGridReadTGenId),
+	FOREIGN KEY (OffGridReadTGenFK) REFERENCES off_grid_reading(OffGridReadingId)
+);
+
+-- Table with Total consuption reading
+CREATE TABLE IF NOT EXISTS off_grid_read_total_consp
+(
+	OffGridReadTConsId int NOT NULL AUTO_INCREMENT,
+	OffGridReadTConsFK int NOT NULL,
+	OffGridReadTConsN int NOT NULL,
+	OffGridReadTConsV double NOT NULL,
+	OffGridReadTConsA double NOT NULL,
+	OffGridReadTConsE double NOT NULL,
+	
+	PRIMARY KEY (OffGridReadTConsId),
+	FOREIGN KEY (OffGridReadTConsFK) REFERENCES off_grid_reading(OffGridReadingId)
+);
+
+DROP TABLE off_grid_read_total_consp, off_grid_read_total_gen,
+off_grid_read_wind, off_grid_read_solar, off_grid_reading, off_grid_name;
+
+#SQLite
+CREATE TABLE IF NOT EXISTS off_grid_name
+(
+	OffGridNameId integer primary key,
+	OffGridNameVal varchar(50) NOT NULL
+);
+
+-- Table with reading
+CREATE TABLE IF NOT EXISTS off_grid_reading
+(
+	OffGridReadingId integer primary key,
+	OffGridReadingFK integer NOT NULL,
+	OffGridReadingDate datetime default current_timestamp,
+	
+	FOREIGN KEY (OffGridReadingFK) REFERENCES off_grid_name(OffGridNameId)
+);
+
+-- Table with Solar reading
+CREATE TABLE IF NOT EXISTS off_grid_read_solar
+(
+	OffGridReadSolarId integer primary key,
+	OffGridReadSolarFK integer NOT NULL,
+	OffGridReadSolarN integer NOT NULL,
+	OffGridReadSolarV double NOT NULL,
+	OffGridReadSolarA double NOT NULL,
+	OffGridReadSolarE double NOT NULL,
+	
+	FOREIGN KEY (OffGridReadSolarFK) REFERENCES off_grid_reading(OffGridReadingId)
+);
+
+-- Table with Wind reading
+CREATE TABLE IF NOT EXISTS off_grid_read_wind
+(
+	OffGridReadWindId integer primary key,
+	OffGridReadWindFK integer NOT NULL,
+	OffGridReadWindN integer NOT NULL,
+	OffGridReadWindV double NOT NULL,
+	OffGridReadWindA double NOT NULL,
+	OffGridReadWindE double NOT NULL,
+	
+	FOREIGN KEY (OffGridReadWindFK) REFERENCES off_grid_reading(OffGridReadingId)
+);
+
+-- Table with Total generation reading
+CREATE TABLE IF NOT EXISTS off_grid_read_total_gen
+(
+	OffGridReadTGenId integer primary key,
+	OffGridReadTGenFK integer NOT NULL,
+	OffGridReadTGenN integer NOT NULL,
+	OffGridReadTGenV double NOT NULL,
+	OffGridReadTGenA double NOT NULL,
+	OffGridReadTGenE double NOT NULL,
+
+	FOREIGN KEY (OffGridReadTGenFK) REFERENCES off_grid_reading(OffGridReadingId)
+);
+
+-- Table with Total consuption reading
+CREATE TABLE IF NOT EXISTS off_grid_read_total_consp
+(
+	OffGridReadTConsId integer primary key,
+	OffGridReadTConsFK integer NOT NULL,
+	OffGridReadTConsN integer NOT NULL,
+	OffGridReadTConsV double NOT NULL,
+	OffGridReadTConsA double NOT NULL,
+	OffGridReadTConsE double NOT NULL,
+
+	FOREIGN KEY (OffGridReadTConsFK) REFERENCES off_grid_reading(OffGridReadingId)
+);
+
+DROP TABLE IF EXISTS off_grid_read_total_consp;
+DROP TABLE IF EXISTS off_grid_read_total_gen;
+DROP TABLE IF EXISTS off_grid_read_wind;
+DROP TABLE IF EXISTS off_grid_read_solar;
+DROP TABLE IF EXISTS off_grid_reading;
+DROP TABLE IF EXISTS off_grid_name;
