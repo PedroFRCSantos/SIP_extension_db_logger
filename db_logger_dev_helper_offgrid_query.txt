@@ -1,0 +1,18 @@
+# get last values from all off-grid
+# intermediate: get all offgrid
+SELECT OffGridNameId, OffGridNameVal FROM off_grid_name;
+
+# intermediate: get last reading
+SELECT MAX(OffGridReadingId) FROM off_grid_reading WHERE OffGridReadingFK = 1;
+
+# get solar last reading energy
+SELECT OffGridReadSolarN, OffGridReadSolarE FROM off_grid_read_solar WHERE OffGridReadSolarFK = 10 ORDER BY OffGridReadSolarN;
+
+# get wind last reading energy
+SELECT OffGridReadWindN, OffGridReadWindE FROM off_grid_read_wind WHERE OffGridReadWindFK = 10 ORDER BY OffGridReadWindN;
+
+# get total generation last reading energy
+SELECT OffGridReadTGenN, OffGridReadTGenE FROM off_grid_read_total_gen WHERE OffGridReadTGenFK = 10 ORDER BY OffGridReadTGenN;
+
+# get total consuption last reading energy
+SELECT OffGridReadTConsN, OffGridReadTConsE FROM off_grid_read_total_consp WHERE OffGridReadTConsFK = 10 ORDER BY OffGridReadTConsN;

@@ -66,9 +66,9 @@ def add_new_register(dbDefinitions, flowRef : str, flowRate : float, flowAccum :
     mutexDB.acquire()
 
     if dbDefinitions[u"serverType"] == 'fromFile':
-        fileTest = u"./data/flow_reading:"+ flowRef + str(dateTimeReg.year) +"_"+ str(dateTimeReg.month) +"_"+ str(dateTimeReg.day) +".txt"
+        fileTest = u"./data/flow_reading_"+ flowRef + str(dateTimeReg.year) +"_"+ str(dateTimeReg.month) +"_"+ str(dateTimeReg.day) +".txt"
         with open(fileTest, "a") as f:
-            f.write(str(flowRate) +"|"+ str(flowAccum) +"|"+ str(dateTimeReg) +"\r\n")
+            f.write(str(flowRate) +"|"+ str(flowAccum) +"|"+ str(dateTimeReg) +"\n")
             f.close()
     else:
         dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
@@ -106,10 +106,10 @@ def get_last_accum_value(dbDefinitions, flowDefinition):
         lastAccum = 0
 
         if dbDefinitions[u"serverType"] == 'fromFile':
-            dayTest = datetime.date.today()
+            dayTest = datetime.now()
 
             while dayTest.year < 2022:
-                fileTest = u"./data/flow_reading:"+ flowDefinition["FlowRef"][i] + str(dayTest.year) +"_"+ str(dayTest.month) +"_"+ str(dayTest.day) +".txt"
+                fileTest = u"./data/flow_reading_"+ flowDefinition["FlowRef"][i] + str(dayTest.year) +"_"+ str(dayTest.month) +"_"+ str(dayTest.day) +".txt"
 
                 if os.path.exists(fileTest):
                     # read file until the end to read acumulate values
