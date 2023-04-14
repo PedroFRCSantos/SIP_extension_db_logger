@@ -81,7 +81,7 @@ def initiate_DB_if_not_exists(dbDefinitions):
     if dbDefinitions[u"serverType"] != 'none':
         dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
 
-        if not dbIsOpen:  
+        if not dbIsOpen:
             return
 
         if dbDefinitions[u"serverType"] == 'sqlLite':
@@ -118,8 +118,10 @@ def initiate_DB_if_not_exists(dbDefinitions):
             # check if alredy register, multi import from library cloud couse same cals
             if dbDefinitions[u"serverType"] == 'sqlLite' or dbDefinitions[u"serverType"] == 'mySQL':
                 if dbDefinitions[u"serverType"] == 'sqlLite':
+                    curDBLog.execute("CREATE TABLE IF NOT EXISTS sip_start (SIPStartId integer primary key, SIPStartTime datetime default current_timestamp)")
                     curDBLog.execute("SELECT count(*) as Total FROM sip_start WHERE (JULIANDAY(datetime(\'now\',\'localtime\')) - JULIANDAY(SIPStartTime)) * 86400 < 2;")
                 else:
+                    curDBLog.execute("CREATE TABLE IF NOT EXISTS sip_start (SIPStartId int NOT NULL AUTO_INCREMENT, SIPStartTime datetime NOT NULL DEFAULT NOW(), PRIMARY KEY (SIPStartId))")
                     curDBLog.execute("SELECT count(*) as Total FROM sip_start WHERE TIME_TO_SEC(TIMEDIFF(NOW(), SIPStartTime)) < 2;")
 
                 recordsRaw = curDBLog.fetchall()
@@ -148,15 +150,14 @@ def initiate_DB_if_not_exists(dbDefinitions):
                     return
 
             if dbDefinitions[u"serverType"] == 'sqlLite':
-                curDBLog.execute("CREATE TABLE IF NOT EXISTS sip_start (SIPStartId integer primary key, SIPStartTime datetime default current_timestamp)")
                 curDBLog.execute("INSERT INTO sip_start (SIPStartTime) VALUES (datetime('now','localtime'))")
             elif dbDefinitions[u"serverType"] == 'fromFile':
                 file2SaveDB = open(u"./data/db_logger_sip_turn_on.txt", "a")
                 file2SaveDB.write(str(datetime.datetime.now()) + "\n")
                 file2SaveDB.close()
             elif dbDefinitions[u"serverType"] == 'mySQL':
-                curDBLog.execute("CREATE TABLE IF NOT EXISTS sip_start (SIPStartId int NOT NULL AUTO_INCREMENT, SIPStartTime datetime NOT NULL DEFAULT NOW(), PRIMARY KEY (SIPStartId))")
                 curDBLog.execute("INSERT INTO sip_start (SIPStartTime) VALUES (NOW())")
 
         if dbDefinitions[u"serverType"] == 'mySQL' or dbDefinitions[u"serverType"] == 'sqlLite':
             conDB.commit()
+
