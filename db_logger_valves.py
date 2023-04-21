@@ -322,10 +322,10 @@ def get_reg_valves(numberOfReg, dbDefinitions):
                     newRow = [currData[0], currData[1], currData[2]]
                 else:
                     # mySQL
-                    newRow = [str(currData[0].year)+"/"+str(currData[0].month)+"/"+str(currData[0].day)+" "+str(currData[0].hour)+":"+str(currData[0].minute)+":"+str(currData[0].second), str(currData[1].year)+"/"+str(currData[1].month)+"/"+str(currData[1].day)+" "+str(currData[1].hour)+":"+str(currData[1].minute)+":"+str(currData[1].second), currData[2]]
+                    newRow = [str(currData[0].year)+"-"+str(currData[0].month)+"-"+str(currData[0].day)+" "+str(currData[0].hour)+":"+str(currData[0].minute)+":"+str(currData[0].second), str(currData[1].year)+"/"+str(currData[1].month)+"/"+str(currData[1].day)+" "+str(currData[1].hour)+":"+str(currData[1].minute)+":"+str(currData[1].second), currData[2]]
                     
-                d1 = datetime.datetime.strptime(str(newRow[0]), '%Y/%m/%d %H:%M:%S')
-                d2 = datetime.datetime.strptime(str(newRow[1]), '%Y/%m/%d %H:%M:%S')
+                d1 = datetime.datetime.strptime(str(newRow[0]), '%Y-%m-%d %H:%M:%S')
+                d2 = datetime.datetime.strptime(str(newRow[1]), '%Y-%m-%d %H:%M:%S')
 
                 newRow.append(estimate_compose_dif_date_time(d1, d2))
                 records.append(newRow)

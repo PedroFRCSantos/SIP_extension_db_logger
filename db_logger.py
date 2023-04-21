@@ -157,11 +157,7 @@ class valve_status_display(ProtectedPage):
             except ValueError:
                 pass
 
-        mutexDB.acquire()
-
         records = get_reg_valves(numberOfReg, dbDefinitions)
-
-        mutexDB.release()
 
         return template_render.db_logger_valve_status(records, numberOfReg)
 
