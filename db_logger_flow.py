@@ -146,3 +146,80 @@ def get_last_accum_value(dbDefinitions, flowDefinition):
     mutexDB.release()
 
     return listAccumFlowL
+
+def add_valve_flow(dbDefinitions, valveId : int, flowRate : float, flowAccum : float, dateTimeReg : datetime.date):
+    global mutexDB
+
+    mutexDB.acquire()
+
+    if dbDefinitions[u"serverType"] == 'fromFile':
+        fileTest = u"./data/flow_valve_"+ str(valveId + 1) +"_"+ str(dateTimeReg.year) +"_"+ str(dateTimeReg.month) +"_"+ str(dateTimeReg.day) +".txt"
+        with open(fileTest, "a") as f:
+            f.write(str(flowRate) +"|"+ str(flowAccum) +"|"+ str(dateTimeReg) +"\n")
+            f.close()
+    else:
+        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
+        if dbIsOpen:
+            if dbDefinitions[u"serverType"] == 'sqlLite':
+                sqlCreate = "CREATE TABLE IF NOT EXISTS valve_reading (ValveRreadingId integer primary key, ValveRreadingFK int NOT NULL, ValveRreadingDateTime datetime default current_timestamp, ValveRreadingAccum double NOT NULL, ValveRreadingFlow double NOT NULL, PRIMARY KEY (ValveRreadingId), FOREIGN KEY (ValveRreadingFK) REFERENCES valves_id(ValveId));"
+            else:
+                sqlCreate = "CREATE TABLE IF NOT EXISTS valve_reading (ValveRreadingId int NOT NULL AUTO_INCREMENT, ValveRreadingFK int NOT NULL, ValveRreadingDateTime datetime NOT NULL DEFAULT NOW(), ValveRreadingAccum double NOT NULL, ValveRreadingFlow double NOT NULL, PRIMARY KEY (ValveRreadingId), FOREIGN KEY (ValveRreadingFK) REFERENCES valves_id(ValveId));"
+
+            curDBLog.execute(sqlCreate)
+            conDB.commit()
+
+            # save value from call
+            sqlAdd = "INSERT INTO valve_reading (ValveRreadingFK, FlowReadingRate, FlowReadingAccum, FlowReadingDate) VALUES ("+ str(valveId + 1) +", "+ str(flowRate) +", "+ str(flowAccum) +", '"+ dateTimeReg.strftime("%Y-%m-%d %H:%M:%S") +"');"
+            curDBLog.execute(sqlCreate)
+            conDB.commit()
+
+    mutexDB.release()
+
+def get_last_valve_accum_val(dbDefinitions, valveId : int):
+    global mutexDB
+
+    lastAccumVal = 0.0
+
+    mutexDB.acquire()
+
+    if dbDefinitions[u"serverType"] == 'fromFile':
+        dayTest = datetime.now()
+
+        while dayTest.year < 2022:
+            fileTest =u"./data/flow_valve_"+ str(valveId + 1) +"_"+ str(dayTest.year) +"_"+ str(dayTest.month) +"_"+ str(dayTest.day) +".txt"
+
+            if os.path.exists(fileTest):
+                # read file until the end to read acumulate values
+                with open(fileTest) as fp:
+                    line = fp.readline()
+                    while line:
+                        listSplit = line.split('|')
+                        if len(listSplit) == 3:
+                            try:
+                                lastAccumVal = float(listSplit[1])
+                            except:
+                                pass
+
+                        line = fp.readline()
+                break
+            else:
+                dayTest = dayTest - timedelta(days=-1)
+    else:
+        dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
+        if dbIsOpen:
+            sqlCnt = "SELECT COUNT(FlowReadingId) as Total FROM flow_reading WHERE FlowReadingFK = "+ str(valveId + 1) +";"
+            curDBLog.execute(sqlCnt)
+            numberOfReg = 0
+            for currData in curDBLog:
+                if len(currData) == 1:
+                    numberOfReg = int(currData[0])
+
+            if numberOfReg > 0:
+                sqlLast = "SELECT MAX(FlowReadingId) as MaxVal FROM flow_reading WHERE FlowReadingFK = "+ str(valveId + 1) +";"
+                for currData in curDBLog:
+                    if len(currData) == 1:
+                        lastAccumVal = float(currData[0])
+
+    mutexDB.release()
+
+    return lastAccumVal
