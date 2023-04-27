@@ -107,6 +107,8 @@ def initiate_DB_if_not_exists(dbDefinitions):
             if len(gv.srvals) > totalNumber:
                 for i in range(len(gv.srvals) - totalNumber):
                     curDBLog.execute("INSERT INTO valves_id (ValveIdName) VALUES ('"+ gv.snames[totalNumber + i] +"')")
+            if totalNumber > len(gv.srvals):
+                totalNumber = len(gv.srvals)
         
             # Update valve Name
             for i in range(totalNumber):

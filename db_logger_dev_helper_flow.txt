@@ -40,14 +40,14 @@ CREATE TABLE IF NOT EXISTS flow_reading
 -- Table to save wather flow for each valve
 CREATE TABLE IF NOT EXISTS valve_reading
 (
-	ValveRreadingId int NOT NULL AUTO_INCREMENT,
-	ValveRreadingFK int NOT NULL,
-	ValveRreadingDateTime datetime NOT NULL DEFAULT NOW(),
-	ValveRreadingAccum double NOT NULL,
-	ValveRreadingFlow double NOT NULL,
+	ValveReadingId int NOT NULL AUTO_INCREMENT,
+	ValveReadingFK int NOT NULL,
+	ValveReadingDateTime datetime NOT NULL DEFAULT NOW(),
+	ValveReadingAccum double NOT NULL,
+	ValveReadingFlow double NOT NULL,
 	
-	PRIMARY KEY (ValveRreadingId),
-	FOREIGN KEY (ValveRreadingFK) REFERENCES valves_id(ValveId)
+	PRIMARY KEY (ValveReadingId),
+	FOREIGN KEY (ValveReadingFK) REFERENCES valves_id(ValveId)
 );
 
 # SQLite
@@ -88,12 +88,11 @@ CREATE TABLE IF NOT EXISTS flow_reading
 -- Table to save wather flow for each valve
 CREATE TABLE IF NOT EXISTS valve_reading
 (
-	ValveRreadingId integer primary key,
-	ValveRreadingFK int NOT NULL,
-	ValveRreadingDateTime datetime default current_timestamp,
-	ValveRreadingAccum double NOT NULL,
-	ValveRreadingFlow double NOT NULL,
+	ValveReadingId integer primary key,
+	ValveReadingFK int NOT NULL,
+	ValveReadingDateTime datetime default current_timestamp,
+	ValveReadingAccum double NOT NULL,
+	ValveReadingFlow double NOT NULL,
 	
-	PRIMARY KEY (ValveRreadingId),
-	FOREIGN KEY (ValveRreadingFK) REFERENCES valves_id(ValveId)
+	FOREIGN KEY (ValveReadingFK) REFERENCES valves_id(ValveId)
 );

@@ -161,16 +161,16 @@ def add_valve_flow(dbDefinitions, valveId : int, flowRate : float, flowAccum : f
         dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
         if dbIsOpen:
             if dbDefinitions[u"serverType"] == 'sqlLite':
-                sqlCreate = "CREATE TABLE IF NOT EXISTS valve_reading (ValveRreadingId integer primary key, ValveRreadingFK int NOT NULL, ValveRreadingDateTime datetime default current_timestamp, ValveRreadingAccum double NOT NULL, ValveRreadingFlow double NOT NULL, PRIMARY KEY (ValveRreadingId), FOREIGN KEY (ValveRreadingFK) REFERENCES valves_id(ValveId));"
+                sqlCreate = "CREATE TABLE IF NOT EXISTS valve_reading (ValveReadingId integer primary key, ValveReadingFK int NOT NULL, ValveReadingDateTime datetime default current_timestamp, ValveReadingAccum double NOT NULL, ValveReadingFlow double NOT NULL, FOREIGN KEY (ValveReadingFK) REFERENCES valves_id(ValveId));"
             else:
-                sqlCreate = "CREATE TABLE IF NOT EXISTS valve_reading (ValveRreadingId int NOT NULL AUTO_INCREMENT, ValveRreadingFK int NOT NULL, ValveRreadingDateTime datetime NOT NULL DEFAULT NOW(), ValveRreadingAccum double NOT NULL, ValveRreadingFlow double NOT NULL, PRIMARY KEY (ValveRreadingId), FOREIGN KEY (ValveRreadingFK) REFERENCES valves_id(ValveId));"
+                sqlCreate = "CREATE TABLE IF NOT EXISTS valve_reading (ValveReadingId int NOT NULL AUTO_INCREMENT, ValveReadingFK int NOT NULL, ValveReadingDateTime datetime NOT NULL DEFAULT NOW(), ValveReadingAccum double NOT NULL, ValveReadingFlow double NOT NULL, PRIMARY KEY (ValveReadingId), FOREIGN KEY (ValveReadingFK) REFERENCES valves_id(ValveId));"
 
             curDBLog.execute(sqlCreate)
             conDB.commit()
 
             # save value from call
-            sqlAdd = "INSERT INTO valve_reading (ValveRreadingFK, FlowReadingRate, FlowReadingAccum, FlowReadingDate) VALUES ("+ str(valveId + 1) +", "+ str(flowRate) +", "+ str(flowAccum) +", '"+ dateTimeReg.strftime("%Y-%m-%d %H:%M:%S") +"');"
-            curDBLog.execute(sqlCreate)
+            sqlAdd = "INSERT INTO valve_reading (ValveReadingFK, ValveReadingFlow, ValveReadingAccum, ValveReadingDateTime) VALUES ("+ str(valveId + 1) +", "+ str(flowRate) +", "+ str(flowAccum) +", '"+ dateTimeReg.strftime("%Y-%m-%d %H:%M:%S") +"');"
+            curDBLog.execute(sqlAdd)
             conDB.commit()
 
     mutexDB.release()
@@ -207,7 +207,7 @@ def get_last_valve_accum_val(dbDefinitions, valveId : int):
     else:
         dbIsOpen, conDB, curDBLog = load_connect_2_DB(dbDefinitions[u"ipPathDB"], dbDefinitions[u"userName"], dbDefinitions[u"passWord"], dbDefinitions[u"dbName"], dbDefinitions)
         if dbIsOpen:
-            sqlCnt = "SELECT COUNT(FlowReadingId) as Total FROM flow_reading WHERE FlowReadingFK = "+ str(valveId + 1) +";"
+            sqlCnt = "SELECT COUNT(ValveReadingId) as Total FROM valve_reading WHERE ValveReadingFK = "+ str(valveId + 1) +";"
             curDBLog.execute(sqlCnt)
             numberOfReg = 0
             for currData in curDBLog:
@@ -215,7 +215,8 @@ def get_last_valve_accum_val(dbDefinitions, valveId : int):
                     numberOfReg = int(currData[0])
 
             if numberOfReg > 0:
-                sqlLast = "SELECT MAX(FlowReadingId) as MaxVal FROM flow_reading WHERE FlowReadingFK = "+ str(valveId + 1) +";"
+                sqlLast = "SELECT MAX(ValveReadingAccum) as MaxVal FROM valve_reading WHERE ValveReadingFK = "+ str(valveId + 1) +";"
+                curDBLog.execute(sqlLast)
                 for currData in curDBLog:
                     if len(currData) == 1:
                         lastAccumVal = float(currData[0])
