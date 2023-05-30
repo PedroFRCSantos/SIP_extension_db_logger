@@ -29,7 +29,7 @@ def create_generic_table(tableName, listElements, dbDefinitions):
                     valveFK = True
                     sqlCreate = sqlCreate +", "+ key + " int NOT NULL"
                     valveFKName = key
-                elif listElements[key] == "int" or listElements[key] == "double" or listElements[key] == "TEXT":
+                elif listElements[key] == "int" or listElements[key] == "double" or listElements[key] == "TEXT" or listElements[key] == "bool" or listElements[key][:len("varchar")]:
                     sqlCreate = sqlCreate +", "+ key + " "+ listElements[key] +" NOT NULL"
                 elif listElements[key] == "date" or listElements[key] == "datetime":
                     if dbDefinitions[u"serverType"] == 'sqlLite':
@@ -199,8 +199,8 @@ def add_date_generic_table(tableName, listData, dbDefinitions, valveId = -1):
                             sqlData = sqlData + ","
                         sqlAdd = sqlAdd + fkFieldName
                         sqlData = sqlData + str(valveId)
-                    elif (dbDefinitions[u"serverType"] == 'mySQL' and (currData[1] == 'date' or currData[1] == 'datetime' or currData[1] == 'time' or currData[1].lower() == 'TEXT'.lower())) or \
-                         (dbDefinitions[u"serverType"] == 'sqlLite' and (currData[2] == 'date' or currData[2] == 'datetime' or currData[2] == 'time' or currData[2].lower() == 'TEXT'.lower())):
+                    elif (dbDefinitions[u"serverType"] == 'mySQL' and (currData[1] == 'date' or currData[1] == 'datetime' or currData[1] == 'time' or currData[1].lower() == 'TEXT'.lower() or currData[1][:len('varchar')] == 'varchar')) or \
+                         (dbDefinitions[u"serverType"] == 'sqlLite' and (currData[2] == 'date' or currData[2] == 'datetime' or currData[2] == 'time' or currData[2].lower() == 'TEXT'.lower() or currData[2][:len('varchar')] == 'varchar')):
                         if isFirst:
                             isFirst = False
                         else:

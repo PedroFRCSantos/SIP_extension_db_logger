@@ -75,8 +75,20 @@ CREATE TABLE IF NOT EXISTS off_grid_read_total_consp
 	FOREIGN KEY (OffGridReadTConsFK) REFERENCES off_grid_reading(OffGridReadingId)
 );
 
+-- Table with battery voltage
+CREATE TABLE IF NOT EXISTS off_grid_batt_volt
+(
+	OffGridBattVoltId int NOT NULL AUTO_INCREMENT,
+	OffGridBattVoltFK int NOT NULL,
+	OffGridBattVoltV double NOT NULL,
+	OffGridBattVoltP double NOT NULL,
+
+	PRIMARY KEY (OffGridBattVoltId),
+	FOREIGN KEY (OffGridBattVoltFK) REFERENCES off_grid_reading(OffGridReadingId)
+);
+
 DROP TABLE off_grid_read_total_consp, off_grid_read_total_gen,
-off_grid_read_wind, off_grid_read_solar, off_grid_reading, off_grid_name;
+off_grid_read_wind, off_grid_read_solar, off_grid_reading, off_grid_name, off_grid_batt_volt;
 
 #SQLite
 CREATE TABLE IF NOT EXISTS off_grid_name
@@ -147,9 +159,21 @@ CREATE TABLE IF NOT EXISTS off_grid_read_total_consp
 	FOREIGN KEY (OffGridReadTConsFK) REFERENCES off_grid_reading(OffGridReadingId)
 );
 
+-- Table with battery voltage
+CREATE TABLE IF NOT EXISTS off_grid_batt_volt
+(
+	OffGridBattVoltId integer primary key,
+	OffGridBattVoltFK integer NOT NULL,
+	OffGridBattVoltV double NOT NULL,
+	OffGridBattVoltP double NOT NULL,
+
+	FOREIGN KEY (OffGridBattVoltFK) REFERENCES off_grid_reading(OffGridReadingId)
+);
+
 DROP TABLE IF EXISTS off_grid_read_total_consp;
 DROP TABLE IF EXISTS off_grid_read_total_gen;
 DROP TABLE IF EXISTS off_grid_read_wind;
 DROP TABLE IF EXISTS off_grid_read_solar;
 DROP TABLE IF EXISTS off_grid_reading;
 DROP TABLE IF EXISTS off_grid_name;
+DROP TABLE IF EXISTS off_grid_batt_volt;

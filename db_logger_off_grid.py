@@ -29,6 +29,9 @@ def add_db_values(dbDefinitions, offGridDefinition, dataOffGrind):
             for i in range(offGridDefinition[dataOffGrind["OffGridRef"]]["TotalConspN"]):
                 f.write("|VCONSP" + str(i + 1) +"|"+ str(dataOffGrind["VCONSP" + str(i + 1)]) +"|CCONSP" + str(i + 1) +"|"+ str(dataOffGrind["CCONSP" + str(i + 1)]) +"|ECONSP" + str(i + 1) +"|"+ str(dataOffGrind["ECONSP" + str(i + 1)]))
 
+            if "BattVol" in dataOffGrind and "BattPerc" in dataOffGrind:
+                f.write("|BATVOL|"+ str(dataOffGrind["BattVol"]) +"|BATPERC|"+ str())
+
             f.write("|")
             f.write("\n")
 
@@ -83,6 +86,12 @@ def add_db_values(dbDefinitions, offGridDefinition, dataOffGrind):
                 sqlAdd = "CREATE TABLE IF NOT EXISTS off_grid_read_total_consp (OffGridReadTConsId integer primary key, OffGridReadTConsFK integer NOT NULL, OffGridReadTConsN integer NOT NULL, OffGridReadTConsV double NOT NULL, OffGridReadTConsA double NOT NULL, OffGridReadTConsE double NOT NULL, FOREIGN KEY (OffGridReadTConsFK) REFERENCES off_grid_reading(OffGridReadingId));"
             curDBLog.execute(sqlAdd)
             conDB.commit()
+
+            # create table to save batery voltage and percentage
+            if dbDefinitions[u"serverType"] == 'mySQL':
+                sqlAdd = "CREATE TABLE IF NOT EXISTS off_grid_batt_volt (OffGridBattVoltId int NOT NULL AUTO_INCREMENT, OffGridBattVoltFK int NOT NULL, OffGridBattVoltV double NOT NULL, OffGridBattVoltP double NOT NULL, PRIMARY KEY (OffGridBattVoltId), FOREIGN KEY (OffGridBattVoltFK) REFERENCES off_grid_reading(OffGridReadingId));"
+            else:
+                sqlAdd = "CREATE TABLE IF NOT EXISTS off_grid_batt_volt (OffGridBattVoltId integer primary key, OffGridBattVoltFK integer NOT NULL, OffGridBattVoltV double NOT NULL, OffGridBattVoltP double NOT NULL, FOREIGN KEY (OffGridBattVoltFK) REFERENCES off_grid_reading(OffGridReadingId));"
 
             # check if off-grid reference exists
             id2OffGrid = -1
@@ -139,6 +148,10 @@ def add_db_values(dbDefinitions, offGridDefinition, dataOffGrind):
                 sqlAdd = "INSERT INTO off_grid_read_total_consp (OffGridReadTConsFK, OffGridReadTConsN, OffGridReadTConsV, OffGridReadTConsA, OffGridReadTConsE) "
                 sqlAdd = sqlAdd +"VALUES ("+ str(lastIdRegister) +", "+ str(i + 1) +", "+ dataOffGrind["VCONSP" + str(i + 1)] +", "+ dataOffGrind["CCONSP" + str(i + 1)] +", "+ dataOffGrind["ECONSP" + str(i + 1)] +");"
                 curDBLog.execute(sqlAdd)
+
+            if "BattVol" in dataOffGrind and "BattPerc" in dataOffGrind:
+                sqlAdd = "INSERT INTO off_grid_batt_volt (OffGridBattVoltFK, OffGridBattVoltV, OffGridBattVoltP) "
+                sqlAdd = sqlAdd +"VALUES ("+ str(lastIdRegister) +", "+ str(dataOffGrind["BattVol"]) +", "+ dataOffGrind["BattPerc"] +")"
 
             conDB.commit()
 
